@@ -42,6 +42,11 @@ export class Agent {
   readonly id: string;
   readonly def: AgentDefinition;
   private deps: AgentDeps;
+  /** Conversation snapshots paused at an approval gate, keyed by approvalId. */
+  private paused = new Map<
+    string,
+    { messages: ChatMessage[]; toolCallId: string; taskId: string }
+  >();
 
   constructor(deps: AgentDeps) {
     this.deps = deps;
@@ -61,41 +66,46 @@ export class Agent {
     });
     await bus.emit("agent.started", { agentId: def.id, role: def.role }, { source: def.id, ...logCtx });
 
-    const messages: ChatMessage[] = [this.systemMessage(), this.taskMessage(task)];
+    const buildFresh = (): ChatMessage[] => {
+      const msgs: ChatMessage[] = [this.systemMessage(), this.taskMessage(task)];
+      const recalled = memory.recall(tenantId, def.id, { query: task.title, limit: 5 });
+      if (recalled.length) {
+        msgs.push({
+          role: "user",
+          content: `Relevant memory:\n${recalled.map((m) => `- ${m.content}`).join("\n")}`,
+        });
+      }
+      return msgs;
+    };
 
-    // Inject long-term memory relevant to this task.
-    const recalled = memory.recall(tenantId, def.id, { query: task.title, limit: 5 });
-    if (recalled.length) {
-      messages.push({
-        role: "user",
-        content: `Relevant memory:\n${recalled.map((m) => `- ${m.content}`).join("\n")}`,
-      });
-    }
-
-    // Resume path: replay the decision on the paused tool call.
+    // Resume path: restore the full prior conversation so the agent CONTINUES
+    // from where it paused (not restart). Without this, every approval gate
+    // loses prior reasoning and the model re-requests the same gated tools.
+    let messages: ChatMessage[];
     if (resume) {
+      const snapshot = this.paused.get(resume.approvalId);
       const approval = store.getApproval(resume.approvalId);
-      if (approval) {
+      if (snapshot && approval) {
+        messages = [...snapshot.messages];
         if (approval.state === "approved") {
-          messages.push({
-            role: "assistant",
-            content: `(resuming approved call to ${approval.tool})`,
-            toolCalls: [
-              { id: approval.id, name: approval.tool, arguments: approval.args },
-            ],
-          });
-          const ctx = this.ctx(task);
-          const result = await tools.invoke(approval.tool, approval.args, ctx);
+          const result = await tools.invoke(approval.tool, approval.args, this.ctx(task));
           if (result.cost) this.recordSpend(task, approval.tool, result.cost.amount, result.cost.currency);
-          messages.push(this.toolResultMessage(approval.id, result.note ?? JSON.stringify(result.data ?? result)));
+          memory.pushWorking(def.id, `${approval.tool} → ${result.note ?? "(ok)"}`);
+          messages.push(this.toolResultMessage(snapshot.toolCallId, result.note ?? JSON.stringify(result.data ?? result)));
           steps.push({ ts: now(), results: [result] });
         } else {
           messages.push({
             role: "user",
-            content: `Your request to use ${approval.tool} was ${approval.state}. Proceed without it or choose another approach.`,
+            content: `Your request to use ${approval.tool} was ${approval.state}. Proceed without it.`,
           });
         }
+        this.paused.delete(resume.approvalId);
+      } else {
+        // Fallback (e.g. process restarted mid-approval): rebuild fresh.
+        messages = buildFresh();
       }
+    } else {
+      messages = buildFresh();
     }
 
     const maxSteps = def.maxSteps ?? 8;
@@ -145,7 +155,12 @@ export class Agent {
           continue;
         }
         if (decision.effect === "approve" && decision.approvalId) {
-          // Pause for human approval.
+          // Snapshot the conversation so resume continues from here.
+          this.paused.set(decision.approvalId, {
+            messages: [...messages],
+            toolCallId: call.id,
+            taskId: task.id,
+          });
           store.updateTaskState(task.id, { state: "awaiting_approval" });
           await bus.emit("agent.awaiting_approval", { approvalId: decision.approvalId, tool: call.name }, { source: def.id, ...logCtx });
           steps.push({ ...stepEntry, policyDecisions: decisions });
@@ -224,6 +239,8 @@ export class Agent {
     error?: string
   ): Promise<void> {
     const { store, memory, bus, def, log } = this.deps;
+    // Drop any paused snapshots for this terminal task to avoid leaks.
+    for (const [k, v] of this.paused) if (v.taskId === task.id) this.paused.delete(k);
     store.updateTaskState(task.id, {
       state: ok ? "succeeded" : "failed",
       finishedAt: now(),
