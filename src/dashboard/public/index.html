@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ai-company · control plane</title>
+    <style>
+      :root {
+        --bg: #0b0e14;
+        --panel: #121722;
+        --panel2: #161c28;
+        --border: #232b3a;
+        --text: #e6e9ef;
+        --muted: #8b95a7;
+        --accent: #4f9cf9;
+        --green: #3fb950;
+        --red: #f85149;
+        --yellow: #d29922;
+        --purple: #a371f7;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.7rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(180deg, #0f141d, var(--bg));
+        position: sticky;
+        top: 0;
+        z-index: 5;
+      }
+      .brand { font-weight: 700; letter-spacing: 0.01em; }
+      .brand span { color: var(--muted); font-weight: 500; margin-left: 0.45rem; }
+      .header-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+      .pill {
+        font-size: 0.78rem;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      #conn.ok { color: var(--green); border-color: var(--green); }
+      #conn.bad { color: var(--red); border-color: var(--red); }
+      .spend-total { color: var(--yellow); font-weight: 600; }
+
+      .topbar {
+        display: flex;
+        gap: 1rem;
+        align-items: stretch;
+        flex-wrap: wrap;
+        padding: 0.9rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--panel);
+      }
+      .newtask {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        flex: 1 1 480px;
+      }
+      .newtask input, .newtask textarea {
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 0.45rem 0.6rem;
+        font: inherit;
+      }
+      .newtask input:focus, .newtask textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .newtask input[name="title"] { flex: 1 1 220px; }
+      .newtask textarea { flex: 2 1 320px; min-height: 2.4rem; resize: vertical; }
+      .newtask input[name="assignedTo"] { flex: 0 1 180px; }
+      .newtask input[name="priority"] { flex: 0 0 90px; }
+      button {
+        background: var(--accent);
+        color: #04101f;
+        border: 0;
+        border-radius: 6px;
+        padding: 0.5rem 0.9rem;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:hover { filter: brightness(1.08); }
+      button.ghost {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--border);
+        font-weight: 500;
+      }
+      button.approve { background: var(--green); color: #04220f; }
+      button.reject { background: var(--red); color: #2a0707; }
+
+      main.grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1px;
+        background: var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+      .col {
+        background: var(--bg);
+        padding: 0.9rem 1.1rem 1.4rem;
+        min-width: 0;
+      }
+      .col h2 {
+        margin: 0 0 0.6rem;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      .empty { color: var(--muted); font-style: italic; padding: 0.4rem 0; }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.6rem 0.7rem;
+        margin-bottom: 0.55rem;
+      }
+      .card .t { font-weight: 600; }
+      .card .meta { color: var(--muted); font-size: 0.8rem; margin-top: 0.15rem; }
+
+      .badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.08rem 0.42rem;
+        border-radius: 999px;
+        text-transform: lowercase;
+        font-family: var(--mono);
+      }
+      .s-queued { background: #1f2735; color: var(--muted); }
+      .s-assigned { background: #11243a; color: var(--accent); }
+      .s-running { background: #2a2336; color: var(--purple); }
+      .s-awaiting_approval { background: #3a2f12; color: var(--yellow); }
+      .s-succeeded { background: #13301c; color: var(--green); }
+      .s-failed { background: #3a1313; color: var(--red); }
+      .s-cancelled { background: #1f2735; color: var(--muted); }
+
+      .chips { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.4rem; }
+      .chip {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        padding: 0.05rem 0.4rem;
+        border-radius: 4px;
+      }
+
+      .actions { display: flex; gap: 0.4rem; margin-top: 0.55rem; }
+
+      .feed {
+        padding: 0.9rem 1.25rem 2rem;
+        max-height: 40vh;
+        overflow-y: auto;
+      }
+      .feed h2 {
+        margin: 0 0 0.5rem;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        position: sticky;
+        top: 0;
+        background: var(--bg);
+      }
+      .ev {
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        padding: 0.18rem 0;
+        border-bottom: 1px solid #161b25;
+        display: grid;
+        grid-template-columns: 70px 180px 1fr;
+        gap: 0.6rem;
+        align-items: baseline;
+      }
+      .ev time { color: var(--muted); }
+      .ev .type { color: var(--accent); }
+      .ev .payload { color: var(--text); white-space: pre-wrap; word-break: break-word; }
+      .ev .payload .src { color: var(--muted); }
+
+      .spendpanel.card {
+        flex: 0 1 280px;
+        margin-bottom: 0;
+        font-size: 0.82rem;
+        color: var(--muted);
+        max-height: 11rem;
+        overflow-y: auto;
+      }
+      .spendpanel .head { display: flex; justify-content: space-between; align-items: baseline; }
+      .spendpanel .total { color: var(--yellow); font-weight: 700; font-variant-numeric: tabular-nums; }
+      .spendpanel .row { display: flex; justify-content: space-between; padding: 0.12rem 0; font-family: var(--mono); font-size: 0.78rem; }
+      .spendpanel .amt { color: var(--text); font-variant-numeric: tabular-nums; }
+
+      @media (max-width: 900px) {
+        main.grid { grid-template-columns: 1fr; }
+        .ev { grid-template-columns: 60px 1fr; }
+        .ev .payload { grid-column: 1 / -1; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">ai-company <span>control plane</span></div>
+      <div class="header-right">
+        <span class="pill" id="spendBadge">spend —</span>
+        <span class="pill" id="conn">connecting…</span>
+      </div>
+    </header>
+
+    <section class="topbar">
+      <form class="newtask" id="taskForm" autocomplete="off">
+        <input name="title" placeholder="Task title" required />
+        <input name="assignedTo" placeholder="assign to agent id (optional)" />
+        <input name="priority" type="number" value="0" min="0" />
+        <textarea name="description" placeholder="Describe the task…" required></textarea>
+        <button type="submit">Enqueue task</button>
+      </form>
+      <aside class="spendpanel card" id="spendPanel">
+        <div class="t">Spend</div>
+        <div class="empty">loading…</div>
+      </aside>
+    </section>
+
+    <main class="grid">
+      <section class="col">
+        <h2>Agents</h2>
+        <div id="agents"><div class="empty">no agents registered</div></div>
+      </section>
+      <section class="col">
+        <h2>Tasks</h2>
+        <div id="tasks"><div class="empty">no tasks</div></div>
+      </section>
+      <section class="col">
+        <h2>Pending approvals</h2>
+        <div id="approvals"><div class="empty">nothing awaiting approval</div></div>
+      </section>
+    </main>
+
+    <section class="feed">
+      <h2>Live event feed</h2>
+      <div id="feed"><div class="empty">waiting for events…</div></div>
+    </section>
+
+    <script>
+      "use strict";
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) =>
+        String(s ?? "").replace(/[&<>"']/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+        );
+      const stateLabel = (s) => s.replace(/_/g, " ");
+      const MAX_EVENTS = 200;
+
+      let pendingTasks = [];
+      let pendingApprovals = [];
+
+      function wsUrl() {
+        const proto = location.protocol === "https:" ? "wss:" : "ws:";
+        return proto + "//" + location.host + "/ws";
+      }
+
+      function connect() {
+        const sock = new WebSocket(wsUrl());
+        sock.onopen = () => {
+          const el = $("conn");
+          el.textContent = "connected";
+          el.className = "ok";
+        };
+        sock.onclose = () => {
+          const el = $("conn");
+          el.textContent = "disconnected";
+          el.className = "bad";
+          setTimeout(connect, 1500);
+        };
+        sock.onerror = () => {
+          try { sock.close(); } catch (e) {}
+        };
+        sock.onmessage = (ev) => {
+          let msg;
+          try { msg = JSON.parse(ev.data); } catch (e) { return; }
+          if (msg.type === "snapshot" && msg.payload) {
+            renderAgents(msg.payload.agents || []);
+            pendingTasks = msg.payload.tasks || [];
+            pendingApprovals = msg.payload.approvals || [];
+            renderTasks();
+            renderApprovals();
+          } else {
+            appendEvent(msg);
+            scheduleRefresh();
+          }
+        };
+      }
+
+      let refreshTimer = null;
+      function scheduleRefresh() {
+        if (refreshTimer) return;
+        refreshTimer = setTimeout(() => {
+          refreshTimer = null;
+          void refreshState();
+        }, 200);
+      }
+
+      async function refreshState() {
+        try {
+          const [tasks, approvals] = await Promise.all([
+            fetch("/api/tasks").then((r) => r.json()),
+            fetch("/api/approvals").then((r) => r.json()),
+          ]);
+          pendingTasks = tasks || [];
+          pendingApprovals = approvals || [];
+          renderTasks();
+          renderApprovals();
+        } catch (e) {}
+      }
+
+      function renderAgents(list) {
+        if (!list.length) {
+          $("agents").innerHTML = '<div class="empty">no agents registered</div>';
+          return;
+        }
+        $("agents").innerHTML = list
+          .map((a) =>
+            '<div class="card">' +
+              '<div class="t">' + esc(a.name) + ' <span class="meta">' + esc(a.role) + '</span></div>' +
+              '<div class="meta">id: ' + esc(a.id) + '</div>' +
+              '<div class="chips">' +
+                (a.tools || []).map((t) => '<span class="chip">' + esc(t) + '</span>').join("") +
+              '</div>' +
+            '</div>'
+          )
+          .join("");
+      }
+
+      function renderTasks() {
+        const list = pendingTasks.slice().reverse();
+        if (!list.length) {
+          $("tasks").innerHTML = '<div class="empty">no tasks</div>';
+          return;
+        }
+        $("tasks").innerHTML = list
+          .map((t) =>
+            '<div class="card">' +
+              '<div class="t">' +
+                '<span class="badge s-' + esc(t.state) + '">' + stateLabel(t.state) + '</span> ' +
+                esc(t.title) +
+              '</div>' +
+              '<div class="meta">' +
+                (t.assignedTo ? '→ ' + esc(t.assignedTo) : 'unassigned') +
+                ' · prio ' + esc(t.priority) +
+                ' · ' + esc((t.createdAt || "").slice(11, 19)) +
+              '</div>' +
+              (t.error ? '<div class="meta" style="color:var(--red)">' + esc(t.error) + '</div>' : '') +
+            '</div>'
+          )
+          .join("");
+      }
+
+      function renderApprovals() {
+        if (!pendingApprovals.length) {
+          $("approvals").innerHTML = '<div class="empty">nothing awaiting approval</div>';
+          return;
+        }
+        $("approvals").innerHTML = pendingApprovals
+          .map((a) =>
+            '<div class="card" data-id="' + esc(a.id) + '">' +
+              '<div class="t">' + esc(a.tool) + '</div>' +
+              '<div class="meta">agent: ' + esc(a.agentId) +
+                (a.cost ? ' · cost: ' + esc(a.cost.amount) + ' ' + esc(a.cost.currency) : '') + '</div>' +
+              '<div class="meta">' + esc(a.reason) + '</div>' +
+              '<div class="actions">' +
+                '<button class="approve" data-decision="approved">Approve</button>' +
+                '<button class="reject" data-decision="rejected">Reject</button>' +
+              '</div>' +
+            '</div>'
+          )
+          .join("");
+      }
+
+      $("approvals").addEventListener("click", async (e) => {
+        const btn = e.target.closest("button[data-decision]");
+        if (!btn) return;
+        const card = btn.closest("[data-id]");
+        if (!card) return;
+        const id = card.getAttribute("data-id");
+        const decision = btn.getAttribute("data-decision");
+        btn.disabled = true;
+        try {
+          await fetch("/api/approvals/" + encodeURIComponent(id) + "/decide", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ decision: decision, by: "dashboard" }),
+          });
+        } finally {
+          await refreshState();
+        }
+      });
+
+      $("taskForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const assignedTo = (fd.get("assignedTo") || "").trim();
+        const body = {
+          title: fd.get("title"),
+          description: fd.get("description"),
+          priority: Number(fd.get("priority") || 0),
+        };
+        if (assignedTo) body.assignedTo = assignedTo;
+        const res = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) e.target.reset();
+        await refreshState();
+      });
+
+      function appendEvent(msg) {
+        const feed = $("feed");
+        const placeholder = feed.querySelector(".empty");
+        if (placeholder) placeholder.remove();
+
+        const node = document.createElement("div");
+        node.className = "ev";
+        const ts = (msg.ts || "").slice(11, 19);
+        const payload = JSON.stringify(msg.payload, null, 0);
+        node.innerHTML =
+          '<time>' + esc(ts) + '</time>' +
+          '<span class="type">' + esc(msg.type) + '</span>' +
+          '<span class="payload"><span class="src">' + esc(msg.source || "") + '</span> ' + esc(payload) + '</span>';
+        feed.insertBefore(node, feed.firstChild);
+
+        while (feed.children.length > MAX_EVENTS) {
+          feed.removeChild(feed.lastChild);
+        }
+      }
+
+      async function pollSpend() {
+        try {
+          const s = await fetch("/api/spend").then((r) => r.json());
+          renderSpend(s);
+        } catch (e) {}
+      }
+
+      function renderSpend(s) {
+        const total = Number(s.total || 0).toFixed(2);
+        const count = s.count || 0;
+        $("spendBadge").innerHTML =
+          'spend <span class="spend-total">$' + esc(total) + '</span> (' + esc(count) + ')';
+
+        const panel = $("spendPanel");
+        const rows = (s.byTool && s.byTool.length)
+          ? s.byTool
+              .map(
+                (r) =>
+                  '<div class="row"><span>' +
+                  esc(r.tool) +
+                  '</span><span class="amt">$' +
+                  esc(Number(r.total || 0).toFixed(2)) +
+                  ' ×' +
+                  esc(r.count) +
+                  "</span></div>"
+              )
+              .join("")
+          : '<div class="empty">no spend recorded</div>';
+        panel.innerHTML =
+          '<div class="head"><span class="t">Spend</span>' +
+          '<span class="total">$' + esc(total) + '</span></div>' +
+          '<div class="meta">' + esc(count) + ' charge' + (count === 1 ? '' : 's') + '</div>' +
+          rows;
+      }
+
+      setInterval(pollSpend, 5000);
+      pollSpend();
+      connect();
+    </script>
+  </body>
+</html>
