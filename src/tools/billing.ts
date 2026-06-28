@@ -1,6 +1,20 @@
-import { defineTool, newId } from "../core";
+import { defineTool, newId, now } from "../core";
 import type { Tool } from "../core";
 import { state, asStr, asNum } from "./state";
+
+const CREDIT_CEILING_USD = 100;
+
+function sumRefunds(subscriptionId: string): number {
+  return state.refunds
+    .filter((r) => r.subscriptionId === subscriptionId)
+    .reduce((total, r) => total + r.amount, 0);
+}
+
+function sumCredits(contactId: string): number {
+  return state.credits
+    .filter((c) => c.contactId === contactId)
+    .reduce((total, c) => total + c.amount, 0);
+}
 
 export function billingTools(): Tool[] {
   return [
@@ -47,10 +61,25 @@ export function billingTools(): Tool[] {
         }
         const sub = state.subscriptions.find((s) => s.id === subscriptionId);
         if (!sub) return { ok: false, error: `No subscription with id ${subscriptionId}` };
+        const alreadyRefunded = sumRefunds(sub.id);
+        if (alreadyRefunded + amount > sub.amount) {
+          return {
+            ok: false,
+            error: `refund of ${amount} + already refunded ${alreadyRefunded} exceeds subscription charge ${sub.amount}`,
+          };
+        }
         const ref = newId("refund");
+        state.refunds.push({
+          id: ref,
+          subscriptionId: sub.id,
+          contactId: sub.contactId,
+          amount,
+          currency: "USD",
+          ts: now(),
+        });
         return {
           ok: true,
-          data: { ref, subscriptionId: sub.id, amount, currency: "USD" },
+          data: { ref, subscriptionId: sub.id, amount, currency: "USD", totalRefunded: alreadyRefunded + amount },
           cost: { amount, currency: "USD" },
           note: `Refund of $${amount} issued on subscription ${sub.id} (ref ${ref}).`,
         };
@@ -77,10 +106,24 @@ export function billingTools(): Tool[] {
         }
         const contact = state.contacts.find((c) => c.id === contactId);
         if (!contact) return { ok: false, error: `No contact with id ${contactId}` };
+        const alreadyCredited = sumCredits(contact.id);
+        if (alreadyCredited + amount > CREDIT_CEILING_USD) {
+          return {
+            ok: false,
+            error: `credit of ${amount} + already credited ${alreadyCredited} exceeds credit ceiling ${CREDIT_CEILING_USD}`,
+          };
+        }
         const ref = newId("credit");
+        state.credits.push({
+          id: ref,
+          contactId: contact.id,
+          amount,
+          currency: "USD",
+          ts: now(),
+        });
         return {
           ok: true,
-          data: { ref, contactId: contact.id, contact: contact.name, amount, currency: "USD" },
+          data: { ref, contactId: contact.id, contact: contact.name, amount, currency: "USD", totalCredited: alreadyCredited + amount },
           cost: { amount, currency: "USD" },
           note: `Credit of $${amount} applied to ${contact.name} (ref ${ref}).`,
         };

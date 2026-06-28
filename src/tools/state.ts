@@ -50,6 +50,23 @@ export interface CommRecord {
   ts: string;
 }
 
+export interface RefundRecord {
+  id: string;
+  subscriptionId: string;
+  contactId?: string;
+  amount: number;
+  currency: string;
+  ts: string;
+}
+
+export interface CreditRecord {
+  id: string;
+  contactId: string;
+  amount: number;
+  currency: string;
+  ts: string;
+}
+
 export type ServiceStatus = "healthy" | "degraded" | "down";
 
 export interface ServiceHealth {
@@ -83,6 +100,8 @@ export interface CompanyState {
   subscriptions: Subscription[];
   kbArticles: KbArticle[];
   commsLog: CommRecord[];
+  refunds: RefundRecord[];
+  credits: CreditRecord[];
   systemServices: SystemService[];
   alerts: Alert[];
 }
@@ -216,6 +235,8 @@ function freshState(): CompanyState {
         ts: "2025-03-15T08:10:00.000Z",
       },
     ],
+    refunds: [],
+    credits: [],
     systemServices: [
       {
         id: "svc_api",
@@ -281,6 +302,8 @@ export function resetState(): void {
   state.subscriptions = fresh.subscriptions;
   state.kbArticles = fresh.kbArticles;
   state.commsLog = fresh.commsLog;
+  state.refunds = fresh.refunds;
+  state.credits = fresh.credits;
   state.systemServices = fresh.systemServices;
   state.alerts = fresh.alerts;
 }
