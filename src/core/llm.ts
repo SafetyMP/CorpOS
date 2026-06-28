@@ -259,8 +259,8 @@ const PRESETS: Record<"zai" | "openai" | "openrouter", HttpPreset> = {
     // slug you configure via OPENROUTER_MODEL; default kept as a sentinel.
     defaultModel: "openrouter/owl-alpha",
     extraHeaders: {
-      "HTTP-Referer": process.env.OPENROUTER_REFERER ?? "https://ai-company.local",
-      "X-Title": process.env.OPENROUTER_TITLE ?? "ai-company",
+      "HTTP-Referer": process.env.OPENROUTER_REFERER ?? "https://corpos.local",
+      "X-Title": process.env.OPENROUTER_TITLE ?? "CorpOS",
     },
   },
 };

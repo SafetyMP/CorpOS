@@ -4,7 +4,7 @@
 
 ## What this project is
 
-`ai-company` — an autonomous company operating system: a TypeScript multi-agent
+`CorpOS` — an autonomous company operating system: a TypeScript multi-agent
 runtime plus a control plane (policy engine, approval gates, spend caps, audit,
 REST/WebSocket API, dashboard). Department "agents" (support, sales, ops,
 finance, engineering) reason via an LLM, call permissioned tools, and coordinate

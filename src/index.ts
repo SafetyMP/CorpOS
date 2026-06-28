@@ -69,7 +69,7 @@ async function main(): Promise<void> {
   const { server } = createHttpServer(services);
   server.listen(port, () => {
     services.log.info("server.listening", { port, provider: provider.id });
-    console.log(`\n  ai-company control plane → http://localhost:${port}\n`);
+    console.log(`\n  CorpOS control plane → http://localhost:${port}\n`);
   });
 
   const shutdown = (): void => {

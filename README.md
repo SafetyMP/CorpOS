@@ -1,4 +1,4 @@
-# ai-company
+# CorpOS
 
 > An autonomous company operating system — a TypeScript multi-agent runtime with a policy, approval, and audit control plane.
 
