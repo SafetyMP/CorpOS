@@ -16,6 +16,7 @@ export {
   HttpLLMProvider,
   createProvider,
   type ProviderConfig,
+  type ProviderKind,
   type SimulationHandler,
   type SimulationResponse,
 } from "./llm";

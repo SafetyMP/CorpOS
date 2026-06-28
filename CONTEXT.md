@@ -47,14 +47,19 @@ through a shared orchestrator. Every consequential action is policy-gated.
 
 ## LLM provider
 
-Agents call **Z.AI** via its OpenAI-compatible endpoint
-(`https://open.bigmodel.cn/api/paas/v4`), model `glm-4.6`, key from
-`ZAI_API_KEY` (or generic `OPENAI_API_KEY` + `OPENAI_BASE_URL`).
+Agents call **OpenRouter** via its OpenAI-compatible endpoint
+(`https://openrouter.ai/api/v1`), model **Owl Alpha**, key from
+`OPENROUTER_API_KEY` and slug from `OPENROUTER_MODEL` (default
+`openrouter/owl-alpha` — set the real OpenRouter slug for Owl Alpha there).
+Optional `OPENROUTER_REFERER` / `OPENROUTER_TITLE` set the OpenRouter
+`HTTP-Referer` / `X-Title` headers. Z.AI and OpenAI remain supported as
+alternatives (`provider: "zai"|"openai"`); the factory auto-detects by key.
 
 **Gotcha: no key is set in this environment.** The system runs
 **simulation-first** — the `SimulationProvider` returns scripted/tool-driven
 responses so the full system is demonstrable and tested without network. Provide
-`ZAI_API_KEY` to switch the default agent provider to live Z.AI. Never log keys.
+`OPENROUTER_API_KEY` to switch the default agent provider to live OpenRouter.
+Never log keys.
 
 ## Gotchas
 

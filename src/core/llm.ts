@@ -74,6 +74,8 @@ export interface HttpProviderOptions {
   apiKey: string;
   baseUrl: string;
   defaultModel: string;
+  /** Extra request headers (e.g. OpenRouter's HTTP-Referer / X-Title). */
+  extraHeaders?: Record<string, string>;
   /** Override fetch (for tests / proxies). Defaults to global fetch. */
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
@@ -112,6 +114,7 @@ export class HttpLLMProvider implements LLMProvider {
         headers: {
           "content-type": "application/json",
           authorization: `Bearer ${this.opts.apiKey}`,
+          ...(this.opts.extraHeaders ?? {}),
         },
         body: JSON.stringify(body),
       });
@@ -213,39 +216,102 @@ function safeParseArgs(raw: string): Record<string, unknown> {
 
 // ─── Factory ─────────────────────────────────────────────────────────
 
+export type ProviderKind = "simulation" | "http" | "zai" | "openai" | "openrouter";
+
 export interface ProviderConfig {
-  provider?: "simulation" | "http" | "zai" | "openai";
+  provider?: ProviderKind;
   simulation?: SimulationResponse[] | SimulationHandler;
   apiKey?: string;
   baseUrl?: string;
   model?: string;
 }
 
+interface HttpPreset {
+  keyEnv: string[];
+  baseUrlEnv: string[];
+  defaultBaseUrl: string;
+  modelEnv: string[];
+  defaultModel: string;
+  extraHeaders?: Record<string, string>;
+}
+
+const PRESETS: Record<"zai" | "openai" | "openrouter", HttpPreset> = {
+  zai: {
+    keyEnv: ["ZAI_API_KEY", "OPENAI_API_KEY"],
+    baseUrlEnv: ["ZAI_BASE_URL", "OPENAI_BASE_URL"],
+    defaultBaseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    modelEnv: ["ZAI_MODEL"],
+    defaultModel: "glm-4.6",
+  },
+  openai: {
+    keyEnv: ["OPENAI_API_KEY"],
+    baseUrlEnv: ["OPENAI_BASE_URL"],
+    defaultBaseUrl: "https://api.openai.com/v1",
+    modelEnv: ["OPENAI_MODEL"],
+    defaultModel: "gpt-4o-mini",
+  },
+  openrouter: {
+    keyEnv: ["OPENROUTER_API_KEY"],
+    baseUrlEnv: ["OPENROUTER_BASE_URL"],
+    defaultBaseUrl: "https://openrouter.ai/api/v1",
+    modelEnv: ["OPENROUTER_MODEL"],
+    // OpenRouter uses the vendor/model slug format. "Owl Alpha" maps to a
+    // slug you configure via OPENROUTER_MODEL; default kept as a sentinel.
+    defaultModel: "openrouter/owl-alpha",
+    extraHeaders: {
+      "HTTP-Referer": process.env.OPENROUTER_REFERER ?? "https://ai-company.local",
+      "X-Title": process.env.OPENROUTER_TITLE ?? "ai-company",
+    },
+  },
+};
+
+function resolveEnv(names: string[]): string | undefined {
+  for (const n of names) {
+    const v = process.env[n];
+    if (v) return v;
+  }
+  return undefined;
+}
+
 export function createProvider(cfg: ProviderConfig = {}): LLMProvider {
   const explicit = cfg.provider;
-  if (explicit === "simulation" || (!explicit && !cfg.simulation === false && !cfg.apiKey)) {
+  if (explicit === "simulation" || (!explicit && !cfg.simulation && !cfg.apiKey)) {
     if (cfg.simulation) return new SimulationProvider(cfg.simulation);
   }
 
-  const apiKey = cfg.apiKey ?? process.env.ZAI_API_KEY ?? process.env.OPENAI_API_KEY;
-  if (!apiKey && (explicit === "http" || explicit === "zai" || explicit === "openai")) {
+  const httpKind: "zai" | "openai" | "openrouter" | undefined =
+    explicit === "http" ? "openrouter" : (explicit as "zai" | "openai" | "openrouter" | undefined);
+
+  // Determine which preset to use and whether a key is available.
+  let preset: HttpPreset | undefined;
+  if (httpKind) {
+    preset = PRESETS[httpKind];
+  } else {
+    // Auto-detect by whichever key is present (openrouter wins over zai/openai).
+    preset =
+      [PRESETS.openrouter, PRESETS.zai, PRESETS.openai].find((p) =>
+        p.keyEnv.some((e) => process.env[e])
+      ) ?? undefined;
+  }
+
+  const apiKey = cfg.apiKey ?? (preset ? resolveEnv(preset.keyEnv) : undefined);
+
+  if (explicit && explicit !== "simulation" && !apiKey) {
     throw new Error(
-      `LLM provider '${explicit}' requested but no API key found (ZAI_API_KEY/OPENAI_API_KEY).`
+      `LLM provider '${explicit}' requested but no API key found (checked: ${preset?.keyEnv.join(", ") ?? "none"}).`
     );
   }
 
-  if (apiKey && (explicit === undefined || explicit === "zai" || explicit === "http" || explicit === "openai")) {
+  if (preset && apiKey) {
     const baseUrl =
-      cfg.baseUrl ??
-      (explicit === "openai"
-        ? process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1"
-        : process.env.OPENAI_BASE_URL ?? process.env.ZAI_BASE_URL ?? "https://open.bigmodel.cn/api/paas/v4");
-    const model =
-      cfg.model ??
-      (explicit === "openai"
-        ? process.env.OPENAI_MODEL ?? "gpt-4o-mini"
-        : process.env.ZAI_MODEL ?? "glm-4.6");
-    return new HttpLLMProvider(explicit ?? "zai", { apiKey, baseUrl, defaultModel: model });
+      cfg.baseUrl ?? resolveEnv(preset.baseUrlEnv) ?? preset.defaultBaseUrl;
+    const model = cfg.model ?? resolveEnv(preset.modelEnv) ?? preset.defaultModel;
+    return new HttpLLMProvider(explicit ?? "openrouter", {
+      apiKey,
+      baseUrl,
+      defaultModel: model,
+      extraHeaders: preset.extraHeaders,
+    });
   }
 
   // Fallback: a simulation that always finishes (safe default, no network).

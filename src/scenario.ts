@@ -1,0 +1,63 @@
+import type { Runtime } from "./core";
+
+/**
+ * Deterministic multi-agent scenario (no live LLM, no network). Demonstrates:
+ *  - a support refund flow that hits an approval gate,
+ *  - an ops agent diagnosing a degraded service,
+ *  - inter-agent delegation shape.
+ * Run with `npm run scenario`.
+ */
+export async function runScenario(runtime: Runtime, tenant: string): Promise<void> {
+  const { services } = runtime;
+  const log = services.log.child("scenario");
+
+  log.info("scenario.start", { provider: services.provider.id });
+
+  // 1. Support refund flow — hits billing.issue_refund approval gate.
+  const support = services.submit({
+    tenantId: tenant,
+    title: "Refund request from Alex",
+    description: "Customer Alex (alex@example.com) requests a refund on sub_demo_1.",
+    assignedTo: "agent_support",
+    createdBy: "human",
+  });
+
+  const supportTask = await services.orchestrator.runToCompletion(await support);
+  log.info("scenario.support.state", { state: supportTask?.state });
+
+  if (supportTask?.state === "awaiting_approval") {
+    const approvals = services.store.pendingApprovals();
+    const approval = approvals[approvals.length - 1];
+    if (approval) {
+      log.info("scenario.approval.decide", { id: approval.id, tool: approval.tool });
+      services.policy.decide(approval.id, "approved", "scenario:human");
+      await services.orchestrator.resume(approval.id);
+    }
+  }
+
+  // 2. Ops diagnosis flow.
+  const ops = await services.submit({
+    tenantId: tenant,
+    title: "Investigate degraded checkout service",
+    description: "Alerts show checkout-api degraded. Diagnose and propose action.",
+    assignedTo: "agent_ops",
+    createdBy: "system",
+  });
+  await services.orchestrator.runToCompletion(ops);
+
+  // 3. Report.
+  const tasks = services.store.listTasks();
+  const events = services.store.recentEvents();
+  const pending = services.store.pendingApprovals();
+
+  console.log("\n=== SCENARIO RESULT ===");
+  console.log(`tasks:      ${tasks.length}`);
+  for (const t of tasks) {
+    console.log(`  - [${t.state}] ${t.title} → ${t.assignedTo} (output: ${t.output?.summary ?? "—"})`);
+  }
+  console.log(`events:     ${events.length}`);
+  console.log(`approvals:  ${pending.length} pending`);
+  console.log("=======================\n");
+
+  log.info("scenario.done", { tasks: tasks.length, events: events.length });
+}
