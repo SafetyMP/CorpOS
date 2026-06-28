@@ -25,16 +25,6 @@ export async function runScenario(runtime: Runtime, tenant: string): Promise<voi
   const supportTask = await services.orchestrator.runToCompletion(await support);
   log.info("scenario.support.state", { state: supportTask?.state });
 
-  if (supportTask?.state === "awaiting_approval") {
-    const approvals = services.store.pendingApprovals();
-    const approval = approvals[approvals.length - 1];
-    if (approval) {
-      log.info("scenario.approval.decide", { id: approval.id, tool: approval.tool });
-      services.policy.decide(approval.id, "approved", "scenario:human");
-      await services.orchestrator.resume(approval.id);
-    }
-  }
-
   // 2. Ops diagnosis flow.
   const ops = await runtime.submit({
     tenantId: tenant,
@@ -45,7 +35,19 @@ export async function runScenario(runtime: Runtime, tenant: string): Promise<voi
   });
   await services.orchestrator.runToCompletion(ops);
 
-  // 3. Report.
+  // 3. Auto-approve every pending gate so the scenario resolves cleanly
+  //    (in production these wait for a human via the dashboard).
+  for (let round = 0; round < 4; round++) {
+    const pending = services.store.pendingApprovals();
+    if (pending.length === 0) break;
+    for (const approval of pending) {
+      log.info("scenario.approval.decide", { id: approval.id, tool: approval.tool });
+      services.policy.decide(approval.id, "approved", "scenario:human");
+      await services.orchestrator.resume(approval.id);
+    }
+  }
+
+  // 4. Report.
   const tasks = services.store.listTasks();
   const events = services.store.recentEvents();
   const pending = services.store.pendingApprovals();

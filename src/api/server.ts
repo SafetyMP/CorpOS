@@ -20,6 +20,11 @@ export function createHttpServer(services: CompanyServices): HttpServerHandles {
   const app = express();
   app.use(express.json());
 
+  // Suppress the browser's default favicon request (no asset shipped).
+  app.get("/favicon.ico", (_req, res) => {
+    res.status(204).end();
+  });
+
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, ts: new Date().toISOString() });
   });

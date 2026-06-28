@@ -88,32 +88,85 @@ main().catch((err) => {
 });
 
 /**
- * Default simulation script for the dashboard when no live LLM key is set.
- * Steps a support agent through a KB lookup + refund, pausing on the
- * approval gate so the dashboard's approval panel is demonstrable.
- * Uses real seeded data (Ada Lovelace / sub_ada_pro, $99 plan).
+ * Default simulation when no live LLM key is set. Dispatches per-agent so
+ * each department gets appropriate canned behavior with an independent step
+ * counter — e.g. ops diagnoses a degraded service rather than echoing the
+ * support refund flow. Uses real seeded data (Ada / sub_ada_pro).
  */
 function scriptedCompany() {
-  let n = 0;
-  return () => {
-    n++;
+  const steps = new Map<string, number>();
+  const step = (key: string): number => {
+    const n = (steps.get(key) ?? 0) + 1;
+    steps.set(key, n);
+    return n;
+  };
+  const has = (req: { tools?: Array<{ name: string }> }, name: string): boolean =>
+    Boolean(req.tools?.some((t) => t.name === name));
+
+  return (req: { tools?: Array<{ name: string }> }) => {
+    // Operations / Engineering: diagnose a degraded service, propose restart.
+    if (has(req, "system.get_health")) {
+      const n = step("ops");
+      if (n === 1)
+        return {
+          toolCalls: [{ name: "system.get_health", arguments: {} }],
+        };
+      if (n === 2)
+        return {
+          toolCalls: [{ name: "system.list_alerts", arguments: {} }],
+        };
+      if (n === 3 && has(req, "system.restart_service"))
+        return {
+          toolCalls: [{ name: "system.restart_service", arguments: { serviceId: "svc_checkout_api" } }],
+        };
+      return {
+        content:
+          "checkout-api was degraded with elevated error rates; restart initiated and health recovering.",
+      };
+    }
+
+    // Finance: review a subscription and apply credit.
+    if (has(req, "billing.apply_credit")) {
+      const n = step("finance");
+      if (n === 1)
+        return {
+          toolCalls: [{ name: "billing.get_subscription", arguments: { subscriptionId: "sub_grace_team" } }],
+        };
+      if (n === 2)
+        return {
+          toolCalls: [{ name: "billing.apply_credit", arguments: { contactId: "ct_grace", amount: 25 } }],
+        };
+      return { content: "Applied a $25 goodwill credit to Grace's Team subscription." };
+    }
+
+    // Sales: qualify a lead, update CRM.
+    if (has(req, "crm.list_deals")) {
+      const n = step("sales");
+      if (n === 1)
+        return {
+          toolCalls: [{ name: "crm.list_deals", arguments: {} }],
+        };
+      if (n === 2)
+        return {
+          toolCalls: [{ name: "crm.lookup_contact", arguments: { email: "grace@example.com" } }],
+        };
+      return { content: "Grace's Team expansion deal is in negotiation; followed up via email." };
+    }
+
+    // Support (default): KB lookup → contact → approval-gated refund.
+    const n = step("support");
     if (n === 1)
       return {
         toolCalls: [{ name: "kb.search", arguments: { query: "refund policy" } }],
       };
     if (n === 2)
       return {
-        toolCalls: [
-          { name: "crm.lookup_contact", arguments: { email: "ada@example.com" } },
-        ],
+        toolCalls: [{ name: "crm.lookup_contact", arguments: { email: "ada@example.com" } }],
       };
     if (n === 3)
       return {
         toolCalls: [
-          {
-            name: "billing.issue_refund",
-            arguments: { subscriptionId: "sub_ada_pro", amount: 49 },
-          },
+          { name: "billing.issue_refund", arguments: { subscriptionId: "sub_ada_pro", amount: 49 } },
         ],
       };
     return { content: "Refund of $49 initiated for Ada per the 30-day policy. Ticket closed." };
