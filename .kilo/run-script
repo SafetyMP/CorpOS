@@ -1,0 +1,36 @@
+#!/usr/bin/env sh
+# Agent Manager run script — starts/stops the project for the selected context.
+# Runs from the selected worktree (WORKTREE_PATH) or main repo (REPO_PATH).
+# Used by the Run button. Derives a per-worktree PORT so parallel worktrees
+# don't collide on a fixed dev-server port.
+set -eu
+
+# shellcheck source=lib/detect-stack.sh
+. "$(dirname "$0")/lib/detect-stack.sh"
+
+cd "${WORKTREE_PATH:-${REPO_PATH:-.}}"
+
+# Derive a stable per-worktree port from the run path so parallel worktrees
+# bind different ports. Falls back to 3000 if hashing fails.
+PORT=${PORT:-$((3000 + ($(printf '%s' "${WORKTREE_PATH:-$PWD}" | cksum | awk '{print $1}') % 1000)))}
+export PORT
+
+stack=$(detect_stack)
+case "$stack" in
+  pnpm)    command -v pnpm >/dev/null 2>&1 && pnpm run dev ;;
+  yarn)    command -v yarn >/dev/null 2>&1 && yarn dev ;;
+  bun)     command -v bun  >/dev/null 2>&1 && { bun run dev || bun test; } ;;
+  npm)
+    if   npm run --silent 2>/dev/null | grep -q '"dev"';   then npm run dev
+    elif npm run --silent 2>/dev/null | grep -q '"start"'; then npm start
+    else echo "[run] no npm dev/start script found"; fi ;;
+  uv)      command -v uv     >/dev/null 2>&1 && { uv run dev || uv run pytest -q; } ;;
+  poetry)  command -v poetry >/dev/null 2>&1 && { poetry run dev || poetry run pytest -q; } ;;
+  pip)     command -v python >/dev/null 2>&1 && python -m pytest -q ;;
+  go)      command -v go     >/dev/null 2>&1 && go run . ;;
+  cargo)   command -v cargo  >/dev/null 2>&1 && cargo run ;;
+  none)
+    echo "[run] no runnable target detected in $(pwd)"
+    echo "[run] edit .kilo/run-script to wire a dev server or test command."
+    exit 0 ;;
+esac

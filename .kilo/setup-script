@@ -1,0 +1,43 @@
+#!/usr/bin/env sh
+# Per-worktree setup for Agent Manager sessions.
+# Runs once when a worktree is created, before the agent session starts.
+# Env: WORKTREE_PATH (this worktree), REPO_PATH (main repo root).
+# Keep under 5 minutes; failures leave the worktree available for inspection.
+set -eu
+
+# shellcheck source=lib/detect-stack.sh
+. "$(dirname "$0")/lib/detect-stack.sh"
+
+cd "${WORKTREE_PATH:?WORKTREE_PATH not set}"
+
+# Copy root-level DEV env files in without overwriting existing ones.
+# Production/staging secrets are deliberately excluded to avoid sprawl.
+if [ -d "${REPO_PATH:-}" ]; then
+  for name in .env .env.local .env.development; do
+    src="$REPO_PATH/$name"
+    [ -e "$src" ] || continue
+    [ -e "$name" ] || cp "$src" "$name"
+  done
+fi
+
+# Install dependencies using the shared stack detector (per-worktree).
+stack=$(detect_stack)
+case "$stack" in
+  pnpm)    command -v pnpm    >/dev/null 2>&1 && pnpm install --frozen-lockfile ;;
+  yarn)    command -v yarn    >/dev/null 2>&1 && yarn install --frozen-lockfile ;;
+  bun)     command -v bun     >/dev/null 2>&1 && bun install --frozen-lockfile ;;
+  npm)
+    if [ -f package-lock.json ]; then
+      command -v npm >/dev/null 2>&1 && npm ci
+    else
+      command -v npm >/dev/null 2>&1 && npm install
+    fi ;;
+  uv)      command -v uv      >/dev/null 2>&1 && uv sync --frozen ;;
+  poetry)  command -v poetry  >/dev/null 2>&1 && poetry install --no-root ;;
+  pip)     command -v pip     >/dev/null 2>&1 && pip install -r requirements.txt ;;
+  go)      command -v go      >/dev/null 2>&1 && go mod download ;;
+  cargo)   command -v cargo   >/dev/null 2>&1 && cargo fetch ;;
+  none)    echo "[setup] no dependency manifest detected" ;;
+esac
+
+echo "[setup] done ($stack) for $WORKTREE_PATH"

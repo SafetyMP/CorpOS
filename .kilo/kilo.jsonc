@@ -1,0 +1,141 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+
+  // ── Model ───────────────────────────────────────────────────────────
+  // Leave unset to use Kilo's default primary model.
+  // Override only when you want to pin a specific provider/model.
+  // "model": "anthropic/claude-sonnet",
+  // "small_model": "anthropic/claude-haiku",
+
+  // ── Context management ──────────────────────────────────────────────
+  "compaction": {
+    "auto": true,  // compact when context fills (default true)
+    "prune": true  // prune stale tool outputs to reclaim space
+  },
+
+  // ── Safety net: checkpoint every session for easy undo ──────────────
+  "snapshot": true,
+
+  // ── Sharing: require explicit opt-in ────────────────────────────────
+  "share": "manual",
+
+  // ── Auto-update: notify but never upgrade without consent ───────────
+  "autoupdate": "notify",
+
+  // ── Instructions: project-wide guidance loaded into context ─────────
+  "instructions": [
+    "AGENTS.md",
+    "CONTEXT.md"
+  ],
+
+  // ── Permissions ─────────────────────────────────────────────────────
+  // Least-surprise defaults: read freely, gate writes & commands,
+  // and hard-block anything that should never be touched.
+  "permission": {
+    // Read-only exploration: allow without prompting
+    "read": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "list": "allow",
+
+    // File edits: allow source, ask for everything else
+    "edit": {
+      "src/**": "allow",
+      "**/*.{ts,tsx,js,jsx,py,go,rs,java}": "allow",
+      // Never let the agent rewrite lockfiles or manifests directly
+      "**/{package.json,package-lock.json,pnpm-lock.yaml,yarn.lock}": "deny",
+      "**/{Cargo.lock,go.sum,poetry.lock,uv.lock}": "deny",
+      "*": "ask"
+    },
+
+    // Shell: ask by default, with safe reads and the project's own
+    // build/test/install commands auto-approved (these are author-controlled,
+    // non-destructive, and run repeatedly during a build + fan-out).
+    "bash": {
+      "git status": "allow",
+      "git diff": "allow",
+      "git log": "allow",
+      "git diff *": "allow",
+      "git log *": "allow",
+      "git show *": "allow",
+      "git branch": "allow",
+      "git branch *": "allow",
+      "rg *": "allow",
+      "ls *": "allow",
+      // Project toolchain (npm + tsx + vitest + tsc) — safe, repeatable.
+      "npm install": "allow",
+      "npm install *": "allow",
+      "npm ci": "allow",
+      "npm run *": "allow",
+      "npm test": "allow",
+      "npm test *": "allow",
+      "npx tsc": "allow",
+      "npx tsc *": "allow",
+      "npx tsx *": "allow",
+      "npx vitest *": "allow",
+      "vitest *": "allow",
+      "node *": "allow",
+      // Block destructive operations outright — cover flag variants and
+      // reorderings, since glob rules can't parse flags.
+      "rm -rf*": "deny",
+      "rm -fr*": "deny",
+      "rm -r *": "deny",
+      "rm -*f*": "deny",
+      "git push -f*": "deny",
+      "git push --force*": "deny",
+      "git push * --force*": "deny",
+      "*": "ask"
+    },
+
+    // Subagents & research tools
+    "task": "allow",
+    "semantic_search": "allow",
+    "todowrite": "allow",
+    "todoread": "allow",
+    "question": "allow",
+
+    // Network: prompt before fetching — never silently exfiltrate
+    "webfetch": "ask",
+    "websearch": "ask",
+
+    // Access outside the workspace: explicit consent each time
+    "external_directory": "ask"
+  },
+
+  // ── MCP servers ─────────────────────────────────────────────────────
+  // Declare integrations here. Prefer `enabled: false` until a server
+  // has been verified, then opt it in explicitly.
+  "mcp": {
+    // Example: local stdio server
+    // "filesystem": {
+    //   "type": "local",
+    //   "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "."],
+    //   "enabled": true,
+    //   "timeout": 10000
+    // }
+    // Example: remote authenticated server
+    // "github": {
+    //   "type": "remote",
+    //   "url": "https://api.example.com/mcp",
+    //   "headers": { "Authorization": "Bearer ${MCP_TOKEN}" },
+    //   "enabled": false
+    // }
+  },
+
+  // ── Providers ───────────────────────────────────────────────────────
+  // Only enable providers you actually use; this reduces model-picker
+  // noise and limits which API keys Kilo reads at startup.
+  // "enabled_providers": ["anthropic"],
+  // "disabled_providers": ["kilo"],
+
+  // ── Plugins ────────────────────────────────────────────────────────
+  // Registered via the plugin field; deps live in .kilo/package.json.
+  "plugin": ["@kilocode/plugin"],
+
+  // ── Skills ──────────────────────────────────────────────────────────
+  // Additional local skill bundles or remote well-known endpoints.
+  "skills": {
+    "paths": [],
+    "urls": []
+  }
+}

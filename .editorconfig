@@ -1,0 +1,26 @@
+# Cross-editor formatting baseline. Editors/IDEs that honor .editorconfig
+# apply these automatically; pair with the project's formatter (Prettier,
+# ruff, gofmt, etc.) for the final word.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{md,markdown}]
+# Preserve trailing two-space line breaks in Markdown.
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
+
+[*.{go,mod,sum}]
+indent_style = tab
+
+[*.py]
+indent_size = 4

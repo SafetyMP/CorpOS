@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+# Native pre-commit hook (language-agnostic, no Node required).
+# Runs the available linter/formatter for the stack, then blocks commits
+# that introduce obvious secrets. Failures abort the commit.
+
+set -eu
+
+# ── 1. Secret guard ───────────────────────────────────────────────────
+# Block common credential patterns from entering history. Best-effort;
+# not a substitute for a real scanner, but stops the obvious cases.
+leak=$(git diff --cached --diff-filter=AM | grep -niE \
+  '(api[_-]?key|secret|token|password|passwd|pwd|private[_-]?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9_\-]{12,}' \
+  | grep -viE '\$\{|process\.env|os\.environ|getenv|<.*>|example|placeholder' || true)
+
+if [ -n "$leak" ]; then
+  echo "pre-commit: possible hardcoded secret in staged change:" >&2
+  echo "$leak" >&2
+  echo "Move it to an env var / secrets manager and try again." >&2
+  echo "(if this is a false positive, commit with --no-verify.)" >&2
+  exit 1
+fi
+
+# ── 2. Lint/format (best-effort, only if a tool + deps are present) ───
+if [ -f package.json ] && grep -q '"lint"' package.json && [ -d node_modules ]; then
+  npm run lint
+elif { [ -f .eslintrc.js ] || [ -f .eslintrc.cjs ] || [ -f eslint.config.js ] || [ -f eslint.config.mjs ]; } \
+     && [ -d node_modules ]; then
+  npx --no-install eslint .
+elif [ -f pyproject.toml ] && command -v ruff >/dev/null 2>&1; then
+  ruff check .
+elif [ -f go.mod ] && command -v go >/dev/null 2>&1; then
+  go vet ./...
+elif [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
+  cargo fmt -- --check
+fi
+
+exit 0

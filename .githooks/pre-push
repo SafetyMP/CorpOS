@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+# Native pre-push hook: run the test suite before publishing a branch.
+# Failures abort the push. Best-effort — skips cleanly if no runner exists.
+set -eu
+
+if [ -f package.json ] && grep -q '"test"' package.json && [ -d node_modules ]; then
+  npm test
+elif [ -f pyproject.toml ] && command -v pytest >/dev/null 2>&1; then
+  pytest -q
+elif [ -f go.mod ] && command -v go >/dev/null 2>&1; then
+  go test ./...
+elif [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
+  cargo test
+fi
+
+exit 0
