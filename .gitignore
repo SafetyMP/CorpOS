@@ -20,6 +20,9 @@ out/
 # Runtime data (SQLite db, logs, uploads)
 data/
 
+# Playwright MCP artifacts (screenshots, snapshots, console logs)
+.playwright-mcp/
+
 # Logs
 *.log
 npm-debug.log*

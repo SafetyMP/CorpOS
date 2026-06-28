@@ -14,10 +14,10 @@ export async function runScenario(runtime: Runtime, tenant: string): Promise<voi
   log.info("scenario.start", { provider: services.provider.id });
 
   // 1. Support refund flow — hits billing.issue_refund approval gate.
-  const support = services.submit({
+  const support = runtime.submit({
     tenantId: tenant,
-    title: "Refund request from Alex",
-    description: "Customer Alex (alex@example.com) requests a refund on sub_demo_1.",
+    title: "Refund request from Ada",
+    description: "Customer Ada (ada@example.com) requests a refund on sub_ada_pro.",
     assignedTo: "agent_support",
     createdBy: "human",
   });
@@ -36,7 +36,7 @@ export async function runScenario(runtime: Runtime, tenant: string): Promise<voi
   }
 
   // 2. Ops diagnosis flow.
-  const ops = await services.submit({
+  const ops = await runtime.submit({
     tenantId: tenant,
     title: "Investigate degraded checkout service",
     description: "Alerts show checkout-api degraded. Diagnose and propose action.",

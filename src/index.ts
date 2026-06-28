@@ -91,6 +91,7 @@ main().catch((err) => {
  * Default simulation script for the dashboard when no live LLM key is set.
  * Steps a support agent through a KB lookup + refund, pausing on the
  * approval gate so the dashboard's approval panel is demonstrable.
+ * Uses real seeded data (Ada Lovelace / sub_ada_pro, $99 plan).
  */
 function scriptedCompany() {
   let n = 0;
@@ -103,7 +104,7 @@ function scriptedCompany() {
     if (n === 2)
       return {
         toolCalls: [
-          { name: "crm.lookup_contact", arguments: { email: "alex@example.com" } },
+          { name: "crm.lookup_contact", arguments: { email: "ada@example.com" } },
         ],
       };
     if (n === 3)
@@ -111,10 +112,10 @@ function scriptedCompany() {
         toolCalls: [
           {
             name: "billing.issue_refund",
-            arguments: { subscriptionId: "sub_demo_1", amount: 49 },
+            arguments: { subscriptionId: "sub_ada_pro", amount: 49 },
           },
         ],
       };
-    return { content: "Refund of $49 initiated for Alex per the 30-day policy. Ticket closed." };
+    return { content: "Refund of $49 initiated for Ada per the 30-day policy. Ticket closed." };
   };
 }

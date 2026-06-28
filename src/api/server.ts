@@ -123,9 +123,6 @@ export function createHttpServer(services: CompanyServices): HttpServerHandles {
     socket.on("error", () => unsubscribe());
   });
 
-  const port = Number(process.env.PORT ?? 3000);
-  server.listen(port, () => services.log.info("http.listening", { port }));
-
   return { app, server, wss };
 }
 
