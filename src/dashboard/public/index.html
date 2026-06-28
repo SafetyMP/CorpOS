@@ -6,264 +6,320 @@
     <title>ai-company · control plane</title>
     <style>
       :root {
-        --bg: #0b0e14;
-        --panel: #121722;
-        --panel2: #161c28;
-        --border: #232b3a;
-        --text: #e6e9ef;
-        --muted: #8b95a7;
-        --accent: #4f9cf9;
+        --bg: #0a0d14;
+        --bg-grad: radial-gradient(1200px 600px at 80% -10%, #131a2b 0%, transparent 60%);
+        --panel: #11162080;
+        --panel-solid: #121826;
+        --panel-2: #161d2c;
+        --border: #232c40;
+        --border-soft: #1a2233;
+        --text: #e8ecf5;
+        --muted: #8a94a8;
+        --faint: #5c6577;
+        --accent: #5b9bff;
+        --accent-2: #7c5bff;
         --green: #3fb950;
-        --red: #f85149;
-        --yellow: #d29922;
-        --purple: #a371f7;
-        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --red: #f87171;
+        --yellow: #e3b341;
+        --purple: #c084fc;
+        --cyan: #22d3ee;
+        --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+        --shadow: 0 1px 0 rgba(255,255,255,0.03), 0 8px 24px -12px rgba(0,0,0,0.6);
+        --radius: 12px;
       }
       * { box-sizing: border-box; }
       html, body { height: 100%; }
       body {
         margin: 0;
         background: var(--bg);
+        background-image: var(--bg-grad);
+        background-attachment: fixed;
         color: var(--text);
         font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
         font-size: 14px;
-        line-height: 1.45;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
       }
+
+      /* ── Header ── */
       header {
         display: flex;
         align-items: center;
         gap: 1rem;
-        padding: 0.7rem 1.25rem;
+        padding: 0.75rem 1.5rem;
         border-bottom: 1px solid var(--border);
-        background: linear-gradient(180deg, #0f141d, var(--bg));
+        background: rgba(10, 13, 20, 0.85);
+        backdrop-filter: blur(12px);
         position: sticky;
         top: 0;
-        z-index: 5;
+        z-index: 10;
       }
-      .brand { font-weight: 700; letter-spacing: 0.01em; }
-      .brand span { color: var(--muted); font-weight: 500; margin-left: 0.45rem; }
-      .header-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
-      .pill {
-        font-size: 0.78rem;
-        padding: 0.2rem 0.55rem;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        color: var(--muted);
-        font-variant-numeric: tabular-nums;
+      .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; letter-spacing: -0.01em; }
+      .logo {
+        width: 28px; height: 28px; border-radius: 8px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        display: grid; place-items: center; color: #060911; font-weight: 800; font-size: 15px;
+        box-shadow: 0 0 18px -2px rgba(91,155,255,0.5);
       }
-      #conn.ok { color: var(--green); border-color: var(--green); }
+      .brand small { color: var(--muted); font-weight: 500; margin-left: 0.15rem; }
+      .header-right { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
+
+      .badge-pill {
+        font-size: 0.74rem; padding: 0.28rem 0.6rem; border-radius: 999px;
+        border: 1px solid var(--border); color: var(--muted);
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        font-variant-numeric: tabular-nums; background: var(--panel);
+      }
+      .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+      .dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
+      .dot.sim  { background: var(--cyan); }
+      .dot.bad  { background: var(--red); }
+      #conn.ok .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
       #conn.bad { color: var(--red); border-color: var(--red); }
-      .spend-total { color: var(--yellow); font-weight: 600; }
+      #conn.bad .dot { background: var(--red); }
+      .spend-total { color: var(--yellow); font-weight: 700; }
 
-      .topbar {
-        display: flex;
-        gap: 1rem;
-        align-items: stretch;
-        flex-wrap: wrap;
-        padding: 0.9rem 1.25rem;
-        border-bottom: 1px solid var(--border);
-        background: var(--panel);
-      }
-      .newtask {
-        display: flex;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-        align-items: flex-end;
-        flex: 1 1 480px;
-      }
-      .newtask input, .newtask textarea {
-        background: var(--panel2);
-        border: 1px solid var(--border);
-        color: var(--text);
-        border-radius: 6px;
-        padding: 0.45rem 0.6rem;
-        font: inherit;
-      }
-      .newtask input:focus, .newtask textarea:focus {
-        outline: none;
-        border-color: var(--accent);
-      }
-      .newtask input[name="title"] { flex: 1 1 220px; }
-      .newtask textarea { flex: 2 1 320px; min-height: 2.4rem; resize: vertical; }
-      .newtask input[name="assignedTo"] { flex: 0 1 180px; }
-      .newtask input[name="priority"] { flex: 0 0 90px; }
+      /* ── Buttons ── */
       button {
-        background: var(--accent);
-        color: #04101f;
-        border: 0;
-        border-radius: 6px;
-        padding: 0.5rem 0.9rem;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
+        background: var(--accent); color: #04101f; border: 0; border-radius: 8px;
+        padding: 0.5rem 0.95rem; font: inherit; font-weight: 650; cursor: pointer;
+        transition: filter .12s, transform .06s, opacity .12s;
       }
-      button:hover { filter: brightness(1.08); }
-      button.ghost {
-        background: transparent;
-        color: var(--text);
-        border: 1px solid var(--border);
-        font-weight: 500;
+      button:hover { filter: brightness(1.1); }
+      button:active { transform: translateY(1px); }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); font-weight: 550; }
+      button.ghost:hover { background: var(--panel-2); }
+      button.approve { background: var(--green); color: #04210f; }
+      button.reject { background: transparent; color: var(--red); border: 1px solid color-mix(in srgb, var(--red) 45%, transparent); }
+      button.demo {
+        background: linear-gradient(135deg, var(--accent-2), var(--accent));
+        color: #fff; box-shadow: 0 0 16px -4px var(--accent-2);
       }
-      button.approve { background: var(--green); color: #04220f; }
-      button.reject { background: var(--red); color: #2a0707; }
+      button.demo:disabled { box-shadow: none; }
 
-      main.grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 1px;
-        background: var(--border);
-        border-bottom: 1px solid var(--border);
+      /* ── Layout ── */
+      .kpis {
+        display: grid; grid-template-columns: repeat(6, minmax(0,1fr));
+        gap: 0.7rem; padding: 1rem 1.5rem 0;
       }
-      .col {
-        background: var(--bg);
-        padding: 0.9rem 1.1rem 1.4rem;
-        min-width: 0;
+      .kpi {
+        background: var(--panel); border: 1px solid var(--border-soft); border-radius: var(--radius);
+        padding: 0.7rem 0.85rem; box-shadow: var(--shadow);
       }
-      .col h2 {
-        margin: 0 0 0.6rem;
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--muted);
+      .kpi .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); }
+      .kpi .value { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 0.1rem; }
+      .kpi .value.green { color: var(--green); }
+      .kpi .value.yellow { color: var(--yellow); }
+      .kpi .value.purple { color: var(--purple); }
+
+      #demoBanner { padding: 0 1.5rem; }
+      .banner {
+        margin-top: 1rem; padding: 0.7rem 0.95rem; border-radius: var(--radius);
+        background: linear-gradient(135deg, color-mix(in srgb, var(--accent-2) 18%, transparent), color-mix(in srgb, var(--accent) 14%, transparent));
+        border: 1px solid color-mix(in srgb, var(--accent-2) 40%, var(--border));
+        display: flex; align-items: center; gap: 0.7rem; font-size: 0.88rem;
       }
-      .empty { color: var(--muted); font-style: italic; padding: 0.4rem 0; }
+      .banner .spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent); border-top-color: var(--accent); animation: spin .7s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .banner.done { background: color-mix(in srgb, var(--green) 14%, transparent); border-color: color-mix(in srgb, var(--green) 40%, var(--border)); }
+      .banner b { color: var(--text); }
+
+      .shell {
+        display: grid; grid-template-columns: 360px minmax(0,1fr); gap: 1rem;
+        padding: 1rem 1.5rem 2.5rem; align-items: start;
+      }
+      .rail { display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 76px; max-height: calc(100vh - 90px); overflow: auto; padding-right: 2px; }
+      .content { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
 
       .card {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 0.6rem 0.7rem;
-        margin-bottom: 0.55rem;
+        background: var(--panel-solid); border: 1px solid var(--border-soft);
+        border-radius: var(--radius); box-shadow: var(--shadow);
       }
-      .card .t { font-weight: 600; }
-      .card .meta { color: var(--muted); font-size: 0.8rem; margin-top: 0.15rem; }
+      .card > .body { padding: 0.85rem 0.95rem; }
+      .sec-title {
+        display: flex; align-items: center; justify-content: space-between;
+        font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--faint); padding: 0.6rem 0.95rem 0; font-weight: 600;
+      }
+      .sec-title .count { color: var(--muted); background: var(--panel-2); border: 1px solid var(--border-soft); border-radius: 999px; padding: 0 0.5rem; font-size: 0.68rem; }
+      .empty { color: var(--faint); font-style: italic; padding: 0.5rem 0; font-size: 0.85rem; }
+
+      /* ── Compose ── */
+      .compose .body { display: flex; flex-direction: column; gap: 0.5rem; }
+      .compose label { font-size: 0.72rem; color: var(--faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+      .compose input, .compose textarea, .compose select {
+        background: var(--bg); border: 1px solid var(--border); color: var(--text);
+        border-radius: 8px; padding: 0.5rem 0.65rem; font: inherit; width: 100%;
+      }
+      .compose input:focus, .compose textarea:focus, .compose select:focus { outline: none; border-color: var(--accent); }
+      .compose textarea { min-height: 3rem; resize: vertical; }
+      .compose .row { display: grid; grid-template-columns: 1fr 90px; gap: 0.5rem; }
+
+      /* ── Approval cards ── */
+      .approval { border-left: 3px solid var(--yellow); padding: 0.75rem 0.95rem; border-bottom: 1px solid var(--border-soft); }
+      .approval:last-child { border-bottom: 0; }
+      .approval .top { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem; }
+      .approval .tool { font-family: var(--mono); font-weight: 650; font-size: 0.85rem; }
+      .approval .cost { margin-left: auto; font-size: 0.72rem; color: var(--yellow); font-weight: 700; background: color-mix(in srgb, var(--yellow) 14%, transparent); padding: 0.1rem 0.45rem; border-radius: 999px; font-variant-numeric: tabular-nums; }
+      .approval .meta { color: var(--muted); font-size: 0.78rem; }
+      .approval .reason { color: var(--muted); font-size: 0.78rem; margin: 0.2rem 0 0.5rem; }
+      .approval .args { font-family: var(--mono); font-size: 0.72rem; color: var(--faint); background: var(--bg); border-radius: 6px; padding: 0.3rem 0.45rem; margin: 0.25rem 0 0.55rem; white-space: pre-wrap; word-break: break-word; }
+      .approval .actions { display: flex; gap: 0.5rem; }
+
+      /* ── Agent grid ── */
+      .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.7rem; }
+      .agent { background: var(--panel-solid); border: 1px solid var(--border-soft); border-radius: 10px; padding: 0.7rem 0.8rem; }
+      .agent .head { display: flex; align-items: center; gap: 0.55rem; }
+      .avatar { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 0.85rem; color: #060911; flex-shrink: 0; }
+      .agent .name { font-weight: 650; font-size: 0.88rem; line-height: 1.2; }
+      .agent .role { font-size: 0.74rem; color: var(--muted); }
+      .agent .status { margin-left: auto; display: flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; color: var(--faint); text-transform: uppercase; letter-spacing: 0.05em; }
+      .agent.busy .status-dot { background: var(--purple); box-shadow: 0 0 8px var(--purple); animation: pulse 1.4s ease-in-out infinite; }
+      .agent .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+      @keyframes pulse { 50% { opacity: 0.35; } }
+      .agent .chips { display: flex; flex-wrap: wrap; gap: 0.22rem; margin-top: 0.55rem; }
+      .chip { font-family: var(--mono); font-size: 0.68rem; background: var(--bg); border: 1px solid var(--border-soft); color: var(--muted); padding: 0.06rem 0.38rem; border-radius: 5px; }
+
+      /* ── Tasks + feed split ── */
+      .split { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); gap: 1rem; align-items: start; }
+
+      .task { padding: 0.7rem 0.95rem; border-bottom: 1px solid var(--border-soft); }
+      .task:last-child { border-bottom: 0; }
+      .task .top { display: flex; align-items: flex-start; gap: 0.5rem; }
+      .task .title { font-weight: 600; font-size: 0.88rem; flex: 1; min-width: 0; }
+      .task .meta { color: var(--muted); font-size: 0.74rem; margin-top: 0.2rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+      .task .meta .sep { color: var(--faint); }
+      .task .output { font-size: 0.78rem; color: var(--text); background: var(--bg); border-radius: 6px; padding: 0.35rem 0.5rem; margin-top: 0.4rem; border-left: 2px solid var(--green); }
+      .task.failed .output { border-left-color: var(--red); color: var(--red); }
 
       .badge {
-        display: inline-block;
-        font-size: 0.7rem;
-        font-weight: 600;
-        padding: 0.08rem 0.42rem;
-        border-radius: 999px;
-        text-transform: lowercase;
-        font-family: var(--mono);
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        font-size: 0.66rem; font-weight: 650; padding: 0.12rem 0.45rem; border-radius: 999px;
+        text-transform: uppercase; letter-spacing: 0.04em; font-family: var(--mono); white-space: nowrap;
       }
-      .s-queued { background: #1f2735; color: var(--muted); }
+      .s-queued { background: #1c2433; color: var(--muted); }
       .s-assigned { background: #11243a; color: var(--accent); }
       .s-running { background: #2a2336; color: var(--purple); }
       .s-awaiting_approval { background: #3a2f12; color: var(--yellow); }
       .s-succeeded { background: #13301c; color: var(--green); }
       .s-failed { background: #3a1313; color: var(--red); }
-      .s-cancelled { background: #1f2735; color: var(--muted); }
+      .s-cancelled { background: #1c2433; color: var(--faint); }
 
-      .chips { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.4rem; }
-      .chip {
-        font-family: var(--mono);
-        font-size: 0.72rem;
-        background: var(--panel2);
-        border: 1px solid var(--border);
-        color: var(--muted);
-        padding: 0.05rem 0.4rem;
-        border-radius: 4px;
-      }
-
-      .actions { display: flex; gap: 0.4rem; margin-top: 0.55rem; }
-
-      .feed {
-        padding: 0.9rem 1.25rem 2rem;
-        max-height: 40vh;
-        overflow-y: auto;
-      }
-      .feed h2 {
-        margin: 0 0 0.5rem;
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--muted);
-        position: sticky;
-        top: 0;
-        background: var(--bg);
-      }
-      .ev {
-        font-family: var(--mono);
-        font-size: 0.78rem;
-        padding: 0.18rem 0;
-        border-bottom: 1px solid #161b25;
-        display: grid;
-        grid-template-columns: 70px 180px 1fr;
-        gap: 0.6rem;
-        align-items: baseline;
-      }
-      .ev time { color: var(--muted); }
+      /* ── Feed ── */
+      .feed-body { max-height: 520px; overflow-y: auto; }
+      .ev { font-family: var(--mono); font-size: 0.74rem; padding: 0.3rem 0.95rem; border-bottom: 1px solid var(--border-soft); display: grid; grid-template-columns: 56px 150px 1fr; gap: 0.55rem; align-items: baseline; }
+      .ev time { color: var(--faint); }
       .ev .type { color: var(--accent); }
-      .ev .payload { color: var(--text); white-space: pre-wrap; word-break: break-word; }
-      .ev .payload .src { color: var(--muted); }
+      .ev .payload { color: var(--muted); white-space: pre-wrap; word-break: break-word; }
+      .ev .payload .src { color: var(--faint); }
+      .ev.t-task\.queued .type { color: var(--muted); }
+      .ev.t-agent\.(started|succeeded|failed) .type { color: var(--purple); }
+      .ev.t-tool\.call .type { color: var(--cyan); }
+      .ev.t-tool\.denied .type, .ev.t-task\.failed .type { color: var(--red); }
+      .ev.t-approval\.(requested|approved) .type { color: var(--yellow); }
+      .ev.t-spend\.recorded .type { color: var(--green); }
 
-      .spendpanel.card {
-        flex: 0 1 280px;
-        margin-bottom: 0;
-        font-size: 0.82rem;
-        color: var(--muted);
-        max-height: 11rem;
-        overflow-y: auto;
+      .scroll { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+      .scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+      .scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+
+      @media (max-width: 1100px) {
+        .kpis { grid-template-columns: repeat(3, 1fr); }
+        .shell { grid-template-columns: 1fr; }
+        .rail { position: static; max-height: none; }
+        .split { grid-template-columns: 1fr; }
       }
-      .spendpanel .head { display: flex; justify-content: space-between; align-items: baseline; }
-      .spendpanel .total { color: var(--yellow); font-weight: 700; font-variant-numeric: tabular-nums; }
-      .spendpanel .row { display: flex; justify-content: space-between; padding: 0.12rem 0; font-family: var(--mono); font-size: 0.78rem; }
-      .spendpanel .amt { color: var(--text); font-variant-numeric: tabular-nums; }
-
-      @media (max-width: 900px) {
-        main.grid { grid-template-columns: 1fr; }
-        .ev { grid-template-columns: 60px 1fr; }
+      @media (max-width: 640px) {
+        .kpis { grid-template-columns: repeat(2, 1fr); }
+        .ev { grid-template-columns: 50px 1fr; }
         .ev .payload { grid-column: 1 / -1; }
       }
     </style>
   </head>
   <body>
     <header>
-      <div class="brand">ai-company <span>control plane</span></div>
+      <div class="brand">
+        <div class="logo">a</div>
+        ai-company <small>control plane</small>
+      </div>
       <div class="header-right">
-        <span class="pill" id="spendBadge">spend —</span>
-        <span class="pill" id="conn">connecting…</span>
+        <span class="badge-pill" id="providerPill"><span class="dot sim"></span><span id="providerText">simulation</span></span>
+        <span class="badge-pill" id="spendBadge">spend <span class="spend-total">$0.00</span></span>
+        <span class="badge-pill" id="conn"><span class="dot"></span>connecting…</span>
+        <button class="demo" id="demoBtn" type="button">▶ Run demo</button>
       </div>
     </header>
 
-    <section class="topbar">
-      <form class="newtask" id="taskForm" autocomplete="off">
-        <input name="title" placeholder="Task title" required />
-        <input name="assignedTo" placeholder="assign to agent id (optional)" />
-        <input name="priority" type="number" value="0" min="0" />
-        <textarea name="description" placeholder="Describe the task…" required></textarea>
-        <button type="submit">Enqueue task</button>
-      </form>
-      <aside class="spendpanel card" id="spendPanel">
-        <div class="t">Spend</div>
-        <div class="empty">loading…</div>
+    <div class="kpis" id="kpis">
+      <div class="kpi"><div class="label">Tasks</div><div class="value" id="k-tasks">0</div></div>
+      <div class="kpi"><div class="label">Running</div><div class="value purple" id="k-running">0</div></div>
+      <div class="kpi"><div class="label">Awaiting</div><div class="value yellow" id="k-awaiting">0</div></div>
+      <div class="kpi"><div class="label">Succeeded</div><div class="value green" id="k-succeeded">0</div></div>
+      <div class="kpi"><div class="label">Approvals</div><div class="value" id="k-approvals">0</div></div>
+      <div class="kpi"><div class="label">Agents</div><div class="value" id="k-agents">0</div></div>
+    </div>
+
+    <div id="demoBanner"></div>
+
+    <div class="shell">
+      <aside class="rail">
+        <div class="card compose">
+          <div class="sec-title">Compose task</div>
+          <form class="body" id="taskForm" autocomplete="off">
+            <div>
+              <label for="f-title">Title</label>
+              <input id="f-title" name="title" placeholder="e.g. Refund for Ada" required />
+            </div>
+            <div>
+              <label for="f-desc">Description</label>
+              <textarea id="f-desc" name="description" placeholder="Describe what the agent should do…" required></textarea>
+            </div>
+            <div class="row">
+              <div>
+                <label for="f-agent">Assign to</label>
+                <select id="f-agent" name="assignedTo"><option value="">(auto)</option></select>
+              </div>
+              <div>
+                <label for="f-prio">Priority</label>
+                <input id="f-prio" name="priority" type="number" value="0" min="0" max="9" />
+              </div>
+            </div>
+            <button type="submit">Enqueue task</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="sec-title">Pending approvals <span class="count" id="apprCount">0</span></div>
+          <div id="approvals"><div class="empty" style="padding:0.85rem 0.95rem">nothing awaiting approval</div></div>
+        </div>
       </aside>
-    </section>
 
-    <main class="grid">
-      <section class="col">
-        <h2>Agents</h2>
-        <div id="agents"><div class="empty">no agents registered</div></div>
-      </section>
-      <section class="col">
-        <h2>Tasks</h2>
-        <div id="tasks"><div class="empty">no tasks</div></div>
-      </section>
-      <section class="col">
-        <h2>Pending approvals</h2>
-        <div id="approvals"><div class="empty">nothing awaiting approval</div></div>
-      </section>
-    </main>
+      <main class="content">
+        <div class="card">
+          <div class="sec-title">Agents <span class="count" id="agentCount">0</span></div>
+          <div class="body">
+            <div class="agents-grid" id="agents"><div class="empty">no agents registered</div></div>
+          </div>
+        </div>
 
-    <section class="feed">
-      <h2>Live event feed</h2>
-      <div id="feed"><div class="empty">waiting for events…</div></div>
-    </section>
+        <div class="split">
+          <div class="card">
+            <div class="sec-title">Tasks <span class="count" id="taskCount">0</span></div>
+            <div id="tasks"><div class="empty" style="padding:0.85rem 0.95rem">no tasks yet</div></div>
+          </div>
+          <div class="card">
+            <div class="sec-title">Activity feed</div>
+            <div class="feed-body scroll" id="feed"><div class="empty" style="padding:0.85rem 0.95rem">waiting for events…</div></div>
+          </div>
+        </div>
+      </main>
+    </div>
 
     <script>
       "use strict";
       const $ = (id) => document.getElementById(id);
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const esc = (s) =>
         String(s ?? "").replace(/[&<>"']/g, (c) =>
           ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
@@ -271,8 +327,14 @@
       const stateLabel = (s) => s.replace(/_/g, " ");
       const MAX_EVENTS = 200;
 
+      const AVATAR_COLORS = ["#5b9bff","#7c5bff","#3fb950","#e3b341","#22d3ee","#f87171","#c084fc"];
+      const TERMINAL = ["succeeded", "failed", "cancelled"];
+
+      let agents = [];
       let pendingTasks = [];
       let pendingApprovals = [];
+      let providerId = "simulation";
+      let demoRunning = false;
 
       function wsUrl() {
         const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -281,29 +343,22 @@
 
       function connect() {
         const sock = new WebSocket(wsUrl());
-        sock.onopen = () => {
-          const el = $("conn");
-          el.textContent = "connected";
-          el.className = "ok";
-        };
+        sock.onopen = () => { $("conn").className = "badge-pill ok"; $("conn").innerHTML = '<span class="dot"></span>connected'; };
         sock.onclose = () => {
-          const el = $("conn");
-          el.textContent = "disconnected";
-          el.className = "bad";
+          $("conn").className = "badge-pill bad";
+          $("conn").innerHTML = '<span class="dot"></span>reconnecting…';
           setTimeout(connect, 1500);
         };
-        sock.onerror = () => {
-          try { sock.close(); } catch (e) {}
-        };
+        sock.onerror = () => { try { sock.close(); } catch (e) {} };
         sock.onmessage = (ev) => {
           let msg;
           try { msg = JSON.parse(ev.data); } catch (e) { return; }
           if (msg.type === "snapshot" && msg.payload) {
-            renderAgents(msg.payload.agents || []);
+            agents = msg.payload.agents || [];
             pendingTasks = msg.payload.tasks || [];
             pendingApprovals = msg.payload.approvals || [];
-            renderTasks();
-            renderApprovals();
+            if (msg.payload.provider) setProvider(msg.payload.provider);
+            renderAll();
           } else {
             appendEvent(msg);
             scheduleRefresh();
@@ -314,10 +369,7 @@
       let refreshTimer = null;
       function scheduleRefresh() {
         if (refreshTimer) return;
-        refreshTimer = setTimeout(() => {
-          refreshTimer = null;
-          void refreshState();
-        }, 200);
+        refreshTimer = setTimeout(() => { refreshTimer = null; void refreshState(); }, 200);
       }
 
       async function refreshState() {
@@ -328,70 +380,122 @@
           ]);
           pendingTasks = tasks || [];
           pendingApprovals = approvals || [];
-          renderTasks();
-          renderApprovals();
+          renderAll();
         } catch (e) {}
       }
 
-      function renderAgents(list) {
-        if (!list.length) {
-          $("agents").innerHTML = '<div class="empty">no agents registered</div>';
-          return;
+      function setProvider(id) {
+        providerId = id || "simulation";
+        const live = providerId !== "simulation";
+        $("providerText").textContent = live ? ("live · " + providerId) : "simulation";
+        $("providerPill").querySelector(".dot").className = "dot " + (live ? "live" : "sim");
+      }
+
+      function renderAll() {
+        renderAgents();
+        renderTasks();
+        renderApprovals();
+        renderKpis();
+        renderAgentSelect();
+      }
+
+      function renderKpis() {
+        const byState = {};
+        for (const t of pendingTasks) byState[t.state] = (byState[t.state] || 0) + 1;
+        $("k-tasks").textContent = pendingTasks.length;
+        $("k-running").textContent = (byState["running"] || 0) + (byState["assigned"] || 0);
+        $("k-awaiting").textContent = byState["awaiting_approval"] || 0;
+        $("k-succeeded").textContent = byState["succeeded"] || 0;
+        $("k-approvals").textContent = pendingApprovals.length;
+        $("k-agents").textContent = agents.length;
+        $("agentCount").textContent = agents.length;
+        $("taskCount").textContent = pendingTasks.length;
+        $("apprCount").textContent = pendingApprovals.length;
+      }
+
+      function renderAgentSelect() {
+        const sel = $("f-agent");
+        const cur = sel.value;
+        const opts = '<option value="">(auto)</option>' +
+          agents.map((a) => '<option value="' + esc(a.id) + '">' + esc(a.name) + " · " + esc(a.role) + "</option>").join("");
+        if (sel.innerHTML !== opts) sel.innerHTML = opts;
+        sel.value = cur;
+      }
+
+      function busyAgentIds() {
+        const set = new Set();
+        for (const t of pendingTasks) {
+          if (t.assignedTo && !TERMINAL.includes(t.state)) set.add(t.assignedTo);
         }
-        $("agents").innerHTML = list
-          .map((a) =>
-            '<div class="card">' +
-              '<div class="t">' + esc(a.name) + ' <span class="meta">' + esc(a.role) + '</span></div>' +
-              '<div class="meta">id: ' + esc(a.id) + '</div>' +
-              '<div class="chips">' +
-                (a.tools || []).map((t) => '<span class="chip">' + esc(t) + '</span>').join("") +
-              '</div>' +
-            '</div>'
-          )
+        return set;
+      }
+
+      function renderAgents() {
+        if (!agents.length) { $("agents").innerHTML = '<div class="empty">no agents registered</div>'; return; }
+        const busy = busyAgentIds();
+        $("agents").innerHTML = agents
+          .map((a, i) => {
+            const initial = esc((a.name || a.id || "?").trim().charAt(0).toUpperCase());
+            const isBusy = busy.has(a.id);
+            return (
+              '<div class="agent' + (isBusy ? " busy" : "") + '">' +
+                '<div class="head">' +
+                  '<div class="avatar" style="background:' + AVATAR_COLORS[i % AVATAR_COLORS.length] + '">' + initial + "</div>" +
+                  "<div><div class=\"name\">" + esc(a.name) + "</div>" +
+                  '<div class="role">' + esc(a.role) + "</div></div>" +
+                  '<div class="status"><span class="status-dot"></span>' + (isBusy ? "busy" : "idle") + "</div>" +
+                "</div>" +
+                '<div class="chips">' + (a.tools || []).map((t) => '<span class="chip">' + esc(t) + "</span>").join("") + "</div>" +
+              "</div>"
+            );
+          })
           .join("");
       }
 
       function renderTasks() {
+        if (!pendingTasks.length) { $("tasks").innerHTML = '<div class="empty" style="padding:0.85rem 0.95rem">no tasks yet</div>'; return; }
         const list = pendingTasks.slice().reverse();
-        if (!list.length) {
-          $("tasks").innerHTML = '<div class="empty">no tasks</div>';
-          return;
-        }
         $("tasks").innerHTML = list
-          .map((t) =>
-            '<div class="card">' +
-              '<div class="t">' +
-                '<span class="badge s-' + esc(t.state) + '">' + stateLabel(t.state) + '</span> ' +
-                esc(t.title) +
-              '</div>' +
-              '<div class="meta">' +
-                (t.assignedTo ? '→ ' + esc(t.assignedTo) : 'unassigned') +
-                ' · prio ' + esc(t.priority) +
-                ' · ' + esc((t.createdAt || "").slice(11, 19)) +
-              '</div>' +
-              (t.error ? '<div class="meta" style="color:var(--red)">' + esc(t.error) + '</div>' : '') +
-            '</div>'
-          )
+          .map((t) => {
+            const out = t.output && t.output.summary
+              ? '<div class="output">' + esc(t.output.summary.slice(0, 200)) + (t.output.summary.length > 200 ? "…" : "") + "</div>"
+              : t.error ? '<div class="output">' + esc(t.error) + "</div>" : "";
+            return (
+              '<div class="task ' + (t.state === "failed" ? "failed" : "") + '">' +
+                '<div class="top">' +
+                  '<span class="badge s-' + esc(t.state) + '">' + stateLabel(t.state) + "</span>" +
+                  '<div class="title">' + esc(t.title) + "</div>" +
+                "</div>" +
+                '<div class="meta">' +
+                  (t.assignedTo ? "<span>→ " + esc(t.assignedTo) + "</span>" : "<span>unassigned</span>") +
+                  '<span class="sep">·</span><span>prio ' + esc(t.priority) + "</span>" +
+                  '<span class="sep">·</span><span>' + esc((t.createdAt || "").slice(11, 19)) + "</span>" +
+                  (t.attempts > 1 ? '<span class="sep">·</span><span>try ' + esc(t.attempts) + "</span>" : "") +
+                "</div>" +
+                out +
+              "</div>"
+            );
+          })
           .join("");
       }
 
       function renderApprovals() {
-        if (!pendingApprovals.length) {
-          $("approvals").innerHTML = '<div class="empty">nothing awaiting approval</div>';
-          return;
-        }
+        if (!pendingApprovals.length) { $("approvals").innerHTML = '<div class="empty" style="padding:0.85rem 0.95rem">nothing awaiting approval</div>'; return; }
         $("approvals").innerHTML = pendingApprovals
           .map((a) =>
-            '<div class="card" data-id="' + esc(a.id) + '">' +
-              '<div class="t">' + esc(a.tool) + '</div>' +
-              '<div class="meta">agent: ' + esc(a.agentId) +
-                (a.cost ? ' · cost: ' + esc(a.cost.amount) + ' ' + esc(a.cost.currency) : '') + '</div>' +
-              '<div class="meta">' + esc(a.reason) + '</div>' +
+            '<div class="approval" data-id="' + esc(a.id) + '">' +
+              '<div class="top">' +
+                '<span class="tool">' + esc(a.tool) + "</span>" +
+                (a.cost ? '<span class="cost">$' + esc(Number(a.cost.amount).toFixed(2)) + " " + esc(a.cost.currency) + "</span>" : "") +
+              "</div>" +
+              '<div class="meta">agent ' + esc(a.agentId) + " · task " + esc((a.taskId || "").slice(-6)) + "</div>" +
+              '<div class="args">' + esc(JSON.stringify(a.args)) + "</div>" +
+              '<div class="reason">' + esc(a.reason) + "</div>" +
               '<div class="actions">' +
                 '<button class="approve" data-decision="approved">Approve</button>' +
                 '<button class="reject" data-decision="rejected">Reject</button>' +
-              '</div>' +
-            '</div>'
+              "</div>" +
+            "</div>"
           )
           .join("");
       }
@@ -406,30 +510,19 @@
         btn.disabled = true;
         try {
           await fetch("/api/approvals/" + encodeURIComponent(id) + "/decide", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ decision: decision, by: "dashboard" }),
+            method: "POST", headers: { "content-type": "application/json" },
+            body: JSON.stringify({ decision, by: "dashboard" }),
           });
-        } finally {
-          await refreshState();
-        }
+        } finally { await refreshState(); }
       });
 
       $("taskForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
         const assignedTo = (fd.get("assignedTo") || "").trim();
-        const body = {
-          title: fd.get("title"),
-          description: fd.get("description"),
-          priority: Number(fd.get("priority") || 0),
-        };
+        const body = { title: fd.get("title"), description: fd.get("description"), priority: Number(fd.get("priority") || 0) };
         if (assignedTo) body.assignedTo = assignedTo;
-        const res = await fetch("/api/tasks", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-        });
+        const res = await fetch("/api/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
         if (res.ok) e.target.reset();
         await refreshState();
       });
@@ -438,57 +531,103 @@
         const feed = $("feed");
         const placeholder = feed.querySelector(".empty");
         if (placeholder) placeholder.remove();
-
         const node = document.createElement("div");
-        node.className = "ev";
+        const cls = "ev t-" + String(msg.type || "").replace(/\./g, "\\.");
+        node.className = cls;
         const ts = (msg.ts || "").slice(11, 19);
-        const payload = JSON.stringify(msg.payload, null, 0);
+        const payload = JSON.stringify(msg.payload);
         node.innerHTML =
-          '<time>' + esc(ts) + '</time>' +
-          '<span class="type">' + esc(msg.type) + '</span>' +
-          '<span class="payload"><span class="src">' + esc(msg.source || "") + '</span> ' + esc(payload) + '</span>';
+          "<time>" + esc(ts) + "</time>" +
+          '<span class="type">' + esc(msg.type) + "</span>" +
+          '<span class="payload"><span class="src">' + esc(msg.source || "") + "</span> " + esc(payload) + "</span>";
         feed.insertBefore(node, feed.firstChild);
-
-        while (feed.children.length > MAX_EVENTS) {
-          feed.removeChild(feed.lastChild);
-        }
+        while (feed.children.length > MAX_EVENTS) feed.removeChild(feed.lastChild);
       }
 
       async function pollSpend() {
         try {
           const s = await fetch("/api/spend").then((r) => r.json());
-          renderSpend(s);
+          const total = Number(s.total || 0).toFixed(2);
+          $("spendBadge").innerHTML = 'spend <span class="spend-total">$' + esc(total) + "</span>";
         } catch (e) {}
       }
 
-      function renderSpend(s) {
-        const total = Number(s.total || 0).toFixed(2);
-        const count = s.count || 0;
-        $("spendBadge").innerHTML =
-          'spend <span class="spend-total">$' + esc(total) + '</span> (' + esc(count) + ')';
+      // ── Demo mode ──────────────────────────────────────────────
+      // Posts a curated multi-agent scenario and auto-approves every gate so
+      // the full policy-gated loop is visible without manual steps. Works in
+      // both live and simulation mode (deterministic in simulation).
+      const DEMO_TASKS = [
+        { title: "Refund for Ada Lovelace", description: "Ada (ada@example.com) wants a $49 refund on her Pro subscription (sub_ada_pro). Verify the 30-day policy and her account, then process the refund and notify her.", assignedTo: "agent_support", priority: 2 },
+        { title: "Checkout service degraded", description: "checkout-api is returning elevated 500s. Diagnose health, review alerts, and restart the service if needed.", assignedTo: "agent_ops", priority: 3 },
+        { title: "Apply goodwill credit", description: "Grace (grace@example.com, Team plan) experienced downtime. Apply a $25 goodwill credit to her subscription.", assignedTo: "agent_finance", priority: 1 },
+        { title: "Follow up on Team expansion", description: "Grace Hopper's Team plan expansion deal is in negotiation. Review open deals and follow up with her.", assignedTo: "agent_sales", priority: 1 },
+        { title: "Investigate search latency", description: "search-api latency is spiking. Check system health and decide whether engineering action is needed.", assignedTo: "agent_engineer", priority: 2 },
+      ];
 
-        const panel = $("spendPanel");
-        const rows = (s.byTool && s.byTool.length)
-          ? s.byTool
-              .map(
-                (r) =>
-                  '<div class="row"><span>' +
-                  esc(r.tool) +
-                  '</span><span class="amt">$' +
-                  esc(Number(r.total || 0).toFixed(2)) +
-                  ' ×' +
-                  esc(r.count) +
-                  "</span></div>"
-              )
-              .join("")
-          : '<div class="empty">no spend recorded</div>';
-        panel.innerHTML =
-          '<div class="head"><span class="t">Spend</span>' +
-          '<span class="total">$' + esc(total) + '</span></div>' +
-          '<div class="meta">' + esc(count) + ' charge' + (count === 1 ? '' : 's') + '</div>' +
-          rows;
+      function setBanner(html, done) {
+        $("demoBanner").innerHTML = '<div class="banner' + (done ? " done" : "") + '">' + html + "</div>";
+      }
+      function clearBanner() { $("demoBanner").innerHTML = ""; }
+
+      async function postTask(t) {
+        await fetch("/api/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(t) });
+      }
+      async function approve(id) {
+        await fetch("/api/approvals/" + encodeURIComponent(id) + "/decide", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ decision: "approved", by: "demo" }),
+        });
       }
 
+      async function runDemo() {
+        if (demoRunning) return;
+        demoRunning = true;
+        const btn = $("demoBtn");
+        btn.disabled = true;
+        btn.textContent = "● running…";
+        const live = providerId !== "simulation";
+        try {
+          setBanner('<span class="spinner"></span><span>Starting demo — enqueuing <b>' + DEMO_TASKS.length + " tasks</b> across all agents (" + (live ? "live · " + esc(providerId) : "simulation") + "). Approvals will be auto-resolved.</span>");
+          for (let i = 0; i < DEMO_TASKS.length; i++) {
+            await postTask(DEMO_TASKS[i]);
+            setBanner('<span class="spinner"></span><span>Enqueued <b>' + (i + 1) + "/" + DEMO_TASKS.length + "</b> tasks. Watching agents reason…</span>");
+            await sleep(900);
+          }
+          // Drain approval gates, auto-resolving each so the demo progresses.
+          const deadline = Date.now() + 150000;
+          while (Date.now() < deadline) {
+            await refreshState();
+            const pending = pendingApprovals.slice();
+            if (pending.length) {
+              for (const a of pending) {
+                setBanner('<span class="spinner"></span><span>Auto-approving <b>' + esc(a.tool) + (a.cost ? " ($" + Number(a.cost.amount).toFixed(0) + ")" : "") + "</b> requested by " + esc(a.agentId) + "…</span>");
+                await sleep(1100);
+                await approve(a.id);
+                await sleep(500);
+              }
+            } else {
+              const active = pendingTasks.filter((t) => !TERMINAL.includes(t.state));
+              if (active.length === 0) break;
+              setBanner('<span class="spinner"></span><span>' + active.length + " task(s) still in progress…</span>");
+            }
+            await sleep(900);
+          }
+          const ok = pendingTasks.filter((t) => t.state === "succeeded").length;
+          const spend = await fetch("/api/spend").then((r) => r.json()).catch(() => ({ total: 0 }));
+          setBanner('<span style="font-size:1.1em">✓</span><span>Demo complete — <b>' + ok + "/" + DEMO_TASKS.length + "</b> tasks succeeded, <b>$" + Number(spend.total || 0).toFixed(2) + "</b> spend recorded. Review the activity feed for the full event trace.</span>", true);
+        } catch (e) {
+          setBanner("<span>Demo stopped: " + esc(e.message || e) + "</span>", true);
+        } finally {
+          demoRunning = false;
+          btn.disabled = false;
+          btn.textContent = "▶ Run demo";
+        }
+      }
+
+      $("demoBtn").addEventListener("click", runDemo);
+
+      // boot
+      fetch("/api/health").then((r) => r.json()).then((h) => setProvider(h.provider)).catch(() => {});
       setInterval(pollSpend, 5000);
       pollSpend();
       connect();

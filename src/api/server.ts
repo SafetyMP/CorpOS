@@ -26,7 +26,7 @@ export function createHttpServer(services: CompanyServices): HttpServerHandles {
   });
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, ts: new Date().toISOString() });
+    res.json({ ok: true, ts: new Date().toISOString(), provider: services.provider.id });
   });
 
   app.get("/api/tasks", (req, res) => {
@@ -117,6 +117,7 @@ export function createHttpServer(services: CompanyServices): HttpServerHandles {
         tasks: services.store.listTasks(),
         agents: agentSummary(services),
         approvals: services.store.pendingApprovals(),
+        provider: services.provider.id,
       },
     });
 
