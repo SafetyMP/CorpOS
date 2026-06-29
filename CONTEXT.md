@@ -1,5 +1,7 @@
 # Project context — loaded into every agent session via `instructions` in kilo.jsonc.
+
 # Keep this short and factual. It orients agents to THIS project specifically
+
 # (unlike AGENTS.md, which states universal rules).
 
 ## What this project is
@@ -41,9 +43,9 @@ through a shared orchestrator. Every consequential action is policy-gated.
 - Install: `npm install`
 - Typecheck: `npm run typecheck`
 - Build: `npm run build`
-- Run server (API + dashboard): `npm run dev`  (boots on `$PORT` or 3000)
+- Run server (API + dashboard): `npm run dev` (boots on `$PORT` or 3000)
 - Run a recorded multi-agent scenario: `npm run scenario`
-- Tests: `npm test`  (vitest)
+- Tests: `npm test` (vitest)
 
 ## LLM provider
 

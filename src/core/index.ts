@@ -3,11 +3,7 @@ export { newId } from "./id";
 export { CoreLogger } from "./logger";
 export { EventBus } from "./event-bus";
 export { Store, newTask, type StoreOptions } from "./store";
-export {
-  ToolRegistry,
-  validateArgs,
-  schemaOf,
-} from "./tool";
+export { ToolRegistry, validateArgs, schemaOf } from "./tool";
 export { defineTool, type ToolSpec } from "./tool-builder";
 export { PolicyEngine, globMatch, type PolicyOptions } from "./policy";
 export { MemoryStore } from "./memory";
@@ -22,9 +18,4 @@ export {
 } from "./llm";
 export { Agent, type AgentDeps, type ResumeHandle } from "./agent";
 export { Orchestrator, type OrchestratorDeps } from "./orchestrator";
-export {
-  createCompany,
-  type CompanyConfig,
-  type CompanyServices,
-  type Runtime,
-} from "./app";
+export { createCompany, type CompanyConfig, type CompanyServices, type Runtime } from "./app";

@@ -21,7 +21,7 @@ export class MemoryStore {
   }
 
   remember(
-    item: Omit<MemoryItem, "id" | "ts"> & Partial<Pick<MemoryItem, "id" | "ts">>
+    item: Omit<MemoryItem, "id" | "ts"> & Partial<Pick<MemoryItem, "id" | "ts">>,
   ): MemoryItem {
     const full: MemoryItem = {
       id: item.id ?? newId("mem"),
@@ -36,7 +36,7 @@ export class MemoryStore {
   recall(
     tenantId: string,
     agentId: string,
-    opts: { query?: string; limit?: number; tags?: string[] } = {}
+    opts: { query?: string; limit?: number; tags?: string[] } = {},
   ): MemoryItem[] {
     return this.store.recall(tenantId, agentId, opts);
   }

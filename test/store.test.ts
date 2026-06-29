@@ -57,16 +57,35 @@ describe("Store", () => {
   });
 
   it("inserts and reads back events via recentEvents (newest first)", () => {
-    store.insertEvent({ id: "e1", type: "task.queued", ts: "2024-01-01T00:00:00Z", source: "test", payload: { a: 1 } });
-    store.insertEvent({ id: "e2", type: "task.assigned", ts: "2024-01-01T00:00:01Z", source: "test", payload: { a: 2 } });
+    store.insertEvent({
+      id: "e1",
+      type: "task.queued",
+      ts: "2024-01-01T00:00:00Z",
+      source: "test",
+      payload: { a: 1 },
+    });
+    store.insertEvent({
+      id: "e2",
+      type: "task.assigned",
+      ts: "2024-01-01T00:00:01Z",
+      source: "test",
+      payload: { a: 2 },
+    });
     expect(store.recentEvents().map((e) => e.type)).toEqual(["task.assigned", "task.queued"]);
     expect(store.recentEvents(1).map((e) => e.id)).toEqual(["e2"]);
   });
 
   it("advances the approval lifecycle (pending → approved)", () => {
     store.insertApproval({
-      id: "ap1", tenantId: "t", agentId: "a", taskId: "tk", tool: "billing.x",
-      args: { amount: 5 }, reason: "test", state: "pending", createdAt: "2024-01-01T00:00:00Z",
+      id: "ap1",
+      tenantId: "t",
+      agentId: "a",
+      taskId: "tk",
+      tool: "billing.x",
+      args: { amount: 5 },
+      reason: "test",
+      state: "pending",
+      createdAt: "2024-01-01T00:00:00Z",
     });
     expect(store.pendingApprovals()).toHaveLength(1);
 
@@ -79,7 +98,14 @@ describe("Store", () => {
   });
 
   it("sums spend records per task", () => {
-    const base = { tenantId: "t", agentId: "a", taskId: "tk", tool: "billing.x", currency: "USD", ref: "r" };
+    const base = {
+      tenantId: "t",
+      agentId: "a",
+      taskId: "tk",
+      tool: "billing.x",
+      currency: "USD",
+      ref: "r",
+    };
     store.recordSpend({ id: "s1", ...base, amount: 10, ts: "2024-01-01T00:00:00Z" });
     store.recordSpend({ id: "s2", ...base, amount: 25, ts: "2024-01-01T00:00:01Z" });
     expect(store.spendForTask("t", "tk")).toBe(35);
@@ -88,12 +114,18 @@ describe("Store", () => {
   it("remembers and recalls long-term memory via MemoryStore", () => {
     const mem = new MemoryStore(store, silentLogger);
     mem.remember({
-      tenantId: "t", agentId: "a", kind: "fact",
-      content: "Refunds allowed within 30 days", tags: ["refund", "policy"],
+      tenantId: "t",
+      agentId: "a",
+      kind: "fact",
+      content: "Refunds allowed within 30 days",
+      tags: ["refund", "policy"],
     });
     mem.remember({
-      tenantId: "t", agentId: "a", kind: "note",
-      content: "Customer prefers email", tags: ["prefs"],
+      tenantId: "t",
+      agentId: "a",
+      kind: "note",
+      content: "Customer prefers email",
+      tags: ["prefs"],
     });
 
     const byQuery = mem.recall("t", "a", { query: "Refunds" });

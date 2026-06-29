@@ -117,7 +117,9 @@ function scriptedCompany() {
         };
       if (n === 3 && has(req, "system.restart_service"))
         return {
-          toolCalls: [{ name: "system.restart_service", arguments: { serviceId: "svc_checkout_api" } }],
+          toolCalls: [
+            { name: "system.restart_service", arguments: { serviceId: "svc_checkout_api" } },
+          ],
         };
       return {
         content:
@@ -130,11 +132,15 @@ function scriptedCompany() {
       const n = step("finance");
       if (n === 1)
         return {
-          toolCalls: [{ name: "billing.get_subscription", arguments: { subscriptionId: "sub_grace_team" } }],
+          toolCalls: [
+            { name: "billing.get_subscription", arguments: { subscriptionId: "sub_grace_team" } },
+          ],
         };
       if (n === 2)
         return {
-          toolCalls: [{ name: "billing.apply_credit", arguments: { contactId: "ct_grace", amount: 25 } }],
+          toolCalls: [
+            { name: "billing.apply_credit", arguments: { contactId: "ct_grace", amount: 25 } },
+          ],
         };
       return { content: "Applied a $25 goodwill credit to Grace's Team subscription." };
     }
@@ -166,7 +172,10 @@ function scriptedCompany() {
     if (n === 3)
       return {
         toolCalls: [
-          { name: "billing.issue_refund", arguments: { subscriptionId: "sub_ada_pro", amount: 49 } },
+          {
+            name: "billing.issue_refund",
+            arguments: { subscriptionId: "sub_ada_pro", amount: 49 },
+          },
         ],
       };
     return { content: "Refund of $49 initiated for Ada per the 30-day policy. Ticket closed." };

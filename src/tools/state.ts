@@ -184,8 +184,7 @@ function freshState(): CompanyState {
         id: "kb_refund_policy",
         title: "30-day refund policy",
         tags: ["refund", "billing", "policy"],
-        summary:
-          "Customers can request a full refund within 30 days of purchase or renewal.",
+        summary: "Customers can request a full refund within 30 days of purchase or renewal.",
         body: [
           "Refund policy:",
           "- A full refund is available within 30 days of the initial purchase or a renewal.",
@@ -199,8 +198,7 @@ function freshState(): CompanyState {
         id: "kb_cancel_subscription",
         title: "Canceling a subscription",
         tags: ["subscription", "billing", "cancel"],
-        summary:
-          "How to cancel a customer subscription and what happens to access.",
+        summary: "How to cancel a customer subscription and what happens to access.",
         body: [
           "Cancellation:",
           "- Set the subscription status to 'cancelled' to stop future renewals.",

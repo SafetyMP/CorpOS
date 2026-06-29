@@ -43,10 +43,7 @@ export class EventBus {
     if (this.history.length > this.capacity) this.history.shift();
 
     const direct = this.handlers.get(type);
-    const targets: EventHandler[] = [
-      ...(direct ? [...direct] : []),
-      ...this.wildcard,
-    ];
+    const targets: EventHandler[] = [...(direct ? [...direct] : []), ...this.wildcard];
     for (const h of targets) {
       try {
         await h(event as Event);

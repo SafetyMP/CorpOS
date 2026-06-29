@@ -27,9 +27,7 @@ export function commsTools(): Tool[] {
         }
         let contactId = asStr(args.contactId);
         if (!contactId) {
-          const found = state.contacts.find(
-            (c) => c.email.toLowerCase() === to.toLowerCase()
-          );
+          const found = state.contacts.find((c) => c.email.toLowerCase() === to.toLowerCase());
           contactId = found?.id;
         }
         const record = {
@@ -76,7 +74,11 @@ export function commsTools(): Tool[] {
           ts: now(),
         };
         state.commsLog.push(record);
-        return { ok: true, data: { id: record.id, channel }, note: `Slack message posted to ${channel}.` };
+        return {
+          ok: true,
+          data: { id: record.id, channel },
+          note: `Slack message posted to ${channel}.`,
+        };
       },
     }),
     defineTool({
@@ -96,9 +98,7 @@ export function commsTools(): Tool[] {
         if (!contact) return { ok: false, error: `No contact with email ${email}` };
         const thread = state.commsLog
           .filter(
-            (m) =>
-              m.contactId === contact.id ||
-              (m.contactEmail ?? "").toLowerCase() === email
+            (m) => m.contactId === contact.id || (m.contactEmail ?? "").toLowerCase() === email,
           )
           .sort((a, b) => a.ts.localeCompare(b.ts));
         return {

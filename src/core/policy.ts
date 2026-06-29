@@ -1,11 +1,4 @@
-import type {
-  Approval,
-  Effect,
-  Logger,
-  PolicyDecision,
-  PolicyRule,
-  Tool,
-} from "./types";
+import type { Approval, Effect, Logger, PolicyDecision, PolicyRule, Tool } from "./types";
 export type { PolicyRule } from "./types";
 import { newId } from "./id";
 import { EventBus } from "./event-bus";
@@ -54,7 +47,7 @@ export class PolicyEngine {
   evaluate(
     tool: Tool,
     args: Record<string, unknown>,
-    ctx: { tenantId: string; agentId: string; taskId: string }
+    ctx: { tenantId: string; agentId: string; taskId: string },
   ): PolicyDecision {
     const matched = this.matchingRules(tool.name);
     const explicit = matched[0];
@@ -73,8 +66,7 @@ export class PolicyEngine {
 
     // 3. Spend gating.
     if (tool.permission.category === "spend" || explicit?.spendCapPerRun !== undefined) {
-      const cap =
-        explicit?.spendCapPerRun ?? tool.permission.costCap ?? Infinity;
+      const cap = explicit?.spendCapPerRun ?? tool.permission.costCap ?? Infinity;
       if (cap !== Infinity) {
         const spent = this.store.spendForTask(ctx.tenantId, ctx.taskId);
         const intended = extractCost(args) ?? 0;
@@ -94,7 +86,12 @@ export class PolicyEngine {
 
     // 5. Explicit approve rule.
     if (explicit?.effect === "approve") {
-      return this.requireApproval(tool, args, ctx, explicit.reason ?? `${tool.name} requires approval`);
+      return this.requireApproval(
+        tool,
+        args,
+        ctx,
+        explicit.reason ?? `${tool.name} requires approval`,
+      );
     }
 
     return { effect: this.defaultEffect, reason: "permitted by default policy" };
@@ -108,7 +105,7 @@ export class PolicyEngine {
     tool: Tool,
     args: Record<string, unknown>,
     ctx: { tenantId: string; agentId: string; taskId: string },
-    reason: string
+    reason: string,
   ): PolicyDecision {
     const approval: Approval = {
       id: newId("appr"),
@@ -126,11 +123,12 @@ export class PolicyEngine {
       createdAt: new Date().toISOString(),
     };
     this.store.insertApproval(approval);
-    void this.bus.emit(
-      "approval.requested",
-      approval,
-      { source: "policy", tenantId: ctx.tenantId, taskId: ctx.taskId, agentId: ctx.agentId }
-    );
+    void this.bus.emit("approval.requested", approval, {
+      source: "policy",
+      tenantId: ctx.tenantId,
+      taskId: ctx.taskId,
+      agentId: ctx.agentId,
+    });
     this.log.audit("approval.requested", { approvalId: approval.id, tool: tool.name });
     return { effect: "approve", reason, approvalId: approval.id };
   }
@@ -139,7 +137,7 @@ export class PolicyEngine {
   decide(
     approvalId: string,
     decision: "approved" | "rejected",
-    decidedBy: string
+    decidedBy: string,
   ): Approval | undefined {
     const approval = this.store.getApproval(approvalId);
     if (!approval || approval.state !== "pending") return approval;
@@ -147,7 +145,12 @@ export class PolicyEngine {
     void this.bus.emit(
       `approval.${decision}`,
       { approvalId, tool: approval.tool },
-      { source: "human", tenantId: approval.tenantId, taskId: approval.taskId, agentId: approval.agentId }
+      {
+        source: "human",
+        tenantId: approval.tenantId,
+        taskId: approval.taskId,
+        agentId: approval.agentId,
+      },
     );
     this.log.audit(`approval.${decision}`, { approvalId, decidedBy });
     return { ...approval, state: decision, decidedAt: new Date().toISOString(), decidedBy };

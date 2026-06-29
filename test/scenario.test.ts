@@ -67,7 +67,9 @@ const provider = new SimulationProvider((req) => {
     return { content: "Refund processed and the customer notified. Case closed." };
   }
   if (last?.role === "tool" && /contact found/i.test(text)) {
-    return { toolCalls: [{ name: "billing.issue_refund", arguments: { contactId: "c1", amount: 40 } }] };
+    return {
+      toolCalls: [{ name: "billing.issue_refund", arguments: { contactId: "c1", amount: 40 } }],
+    };
   }
   if (last?.role === "tool" && /kb:|refunds permitted/i.test(text)) {
     return { toolCalls: [{ name: "crm.lookup_contact", arguments: { contactId: "c1" } }] };

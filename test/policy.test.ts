@@ -1,12 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  Store,
-  EventBus,
-  PolicyEngine,
-  defineTool,
-  globMatch,
-  now,
-} from "../src/core/index";
+import { Store, EventBus, PolicyEngine, defineTool, globMatch, now } from "../src/core/index";
 import { silentLogger } from "./helpers";
 
 const tenant = "tenant_a";
@@ -77,7 +70,12 @@ describe("PolicyEngine", () => {
         permission: { category: "read", requiresApproval: false },
         execute: async () => ({ ok: true }),
       });
-      policy.addRule({ id: "r3", tool: "data.export", effect: "approve", reason: "sensitive export" });
+      policy.addRule({
+        id: "r3",
+        tool: "data.export",
+        effect: "approve",
+        reason: "sensitive export",
+      });
       const d = policy.evaluate(tool, {}, ctx);
       expect(d.effect).toBe("approve");
       expect(d.approvalId).toBeDefined();
@@ -96,8 +94,15 @@ describe("PolicyEngine", () => {
 
     it("denies when a prior spend pushes the run over the cap", () => {
       store.recordSpend({
-        id: "s1", tenantId: tenant, agentId, taskId,
-        tool: "billing.charge", amount: 60, currency: "USD", ref: "prior", ts: now(),
+        id: "s1",
+        tenantId: tenant,
+        agentId,
+        taskId,
+        tool: "billing.charge",
+        amount: 60,
+        currency: "USD",
+        ref: "prior",
+        ts: now(),
       });
       const denied = policy.evaluate(spendTool, { amount: 50 }, ctx);
       expect(denied.effect).toBe("deny");
@@ -106,8 +111,15 @@ describe("PolicyEngine", () => {
 
     it("allows when the intended spend stays within the cap", () => {
       store.recordSpend({
-        id: "s1", tenantId: tenant, agentId, taskId,
-        tool: "billing.charge", amount: 60, currency: "USD", ref: "prior", ts: now(),
+        id: "s1",
+        tenantId: tenant,
+        agentId,
+        taskId,
+        tool: "billing.charge",
+        amount: 60,
+        currency: "USD",
+        ref: "prior",
+        ts: now(),
       });
       expect(policy.evaluate(spendTool, { amount: 30 }, ctx).effect).toBe("allow");
     });

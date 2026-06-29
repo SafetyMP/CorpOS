@@ -55,7 +55,9 @@ export async function runScenario(runtime: Runtime, tenant: string): Promise<voi
   console.log("\n=== SCENARIO RESULT ===");
   console.log(`tasks:      ${tasks.length}`);
   for (const t of tasks) {
-    console.log(`  - [${t.state}] ${t.title} → ${t.assignedTo} (output: ${t.output?.summary ?? "—"})`);
+    console.log(
+      `  - [${t.state}] ${t.title} → ${t.assignedTo} (output: ${t.output?.summary ?? "—"})`,
+    );
   }
   console.log(`events:     ${events.length}`);
   console.log(`approvals:  ${pending.length} pending`);

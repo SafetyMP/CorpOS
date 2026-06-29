@@ -1,0 +1,27 @@
+# Never bake secrets or local state into the image.
+.env
+.env.*
+!.env.example
+
+# Build artifacts & dependencies (installed inside the image).
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Runtime state.
+data/
+*.log
+
+# VCS & tooling.
+.git/
+.gitignore
+.github/
+.githooks/
+.kilo/
+.playwright-mcp/
+docs/
+
+# Misc.
+.DS_Store
+*.md
+!README.md

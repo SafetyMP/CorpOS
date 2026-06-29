@@ -1,0 +1,39 @@
+version: 2
+updates:
+  # npm dependencies (application + dev)
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    groups:
+      types:
+        patterns:
+          - "@types/*"
+          - "@eslint/*"
+          - "typescript-eslint"
+      eslint:
+        patterns:
+          - "eslint"
+          - "prettier"
+          - "eslint-config-prettier"
+    labels:
+      - dependencies
+      - javascript
+
+  # GitHub Actions versions
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(ci)"
+      include: scope
+    labels:
+      - dependencies
+      - github-actions

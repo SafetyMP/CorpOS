@@ -49,12 +49,12 @@ CorpOS is built as an open reference architecture, not a black box. The decision
                   OpenRouter / Z.AI / OpenAI   spend · memory · audit
 ```
 
-| Layer | Path | Responsibility |
-|---|---|---|
-| **Runtime** | `src/core/` | types, llm, logger(+audit), event-bus, store (SQLite), tool registry, policy engine, memory, agent loop, orchestrator |
-| **Agents** | `src/agents/` | one file per department — system prompt + tool subset |
-| **Tools** | `src/tools/` | CRM, comms, billing, knowledge, system packs over shared seeded state + agent-to-agent delegate |
-| **Control plane** | `src/api/`, `src/dashboard/` | Express REST + WebSocket + static dashboard |
+| Layer             | Path                         | Responsibility                                                                                                        |
+| ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Runtime**       | `src/core/`                  | types, llm, logger(+audit), event-bus, store (SQLite), tool registry, policy engine, memory, agent loop, orchestrator |
+| **Agents**        | `src/agents/`                | one file per department — system prompt + tool subset                                                                 |
+| **Tools**         | `src/tools/`                 | CRM, comms, billing, knowledge, system packs over shared seeded state + agent-to-agent delegate                       |
+| **Control plane** | `src/api/`, `src/dashboard/` | Express REST + WebSocket + static dashboard                                                                           |
 
 ## Quick start
 
@@ -93,27 +93,27 @@ One click on **▶ Run demo** posts a curated 5-agent scenario — support refun
 
 ## Commands
 
-| Command | What it does |
-|---|---|
-| `npm install` | Install dependencies |
-| `npm run dev` | Boot API + dashboard (tsx watch) |
-| `npm run scenario` | Run a recorded deterministic multi-agent scenario |
-| `npm test` | Run the vitest suite (deterministic, no network) |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run build` | Compile to `dist/` |
+| Command             | What it does                                      |
+| ------------------- | ------------------------------------------------- |
+| `npm install`       | Install dependencies                              |
+| `npm run dev`       | Boot API + dashboard (tsx watch)                  |
+| `npm run scenario`  | Run a recorded deterministic multi-agent scenario |
+| `npm test`          | Run the vitest suite (deterministic, no network)  |
+| `npm run typecheck` | `tsc --noEmit`                                    |
+| `npm run build`     | Compile to `dist/`                                |
 
 ## REST + WebSocket API (selected)
 
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/api/health` | Liveness + provider mode |
-| `GET` | `/api/agents` | Registered agents + tools |
-| `GET` / `POST` | `/api/tasks` | List / submit tasks |
-| `GET` | `/api/approvals` | Pending approvals |
-| `POST` | `/api/approvals/:id/decide` | `{decision:"approved"\|"rejected", by}` |
-| `GET` | `/api/spend` | Spend ledger totals |
-| `GET` | `/api/events?limit=50` | Recent events |
-| `WS` | `/ws` | Live snapshot + event stream |
+| Method         | Path                        | Purpose                                 |
+| -------------- | --------------------------- | --------------------------------------- |
+| `GET`          | `/api/health`               | Liveness + provider mode                |
+| `GET`          | `/api/agents`               | Registered agents + tools               |
+| `GET` / `POST` | `/api/tasks`                | List / submit tasks                     |
+| `GET`          | `/api/approvals`            | Pending approvals                       |
+| `POST`         | `/api/approvals/:id/decide` | `{decision:"approved"\|"rejected", by}` |
+| `GET`          | `/api/spend`                | Spend ledger totals                     |
+| `GET`          | `/api/events?limit=50`      | Recent events                           |
+| `WS`           | `/ws`                       | Live snapshot + event stream            |
 
 ```bash
 curl -X POST http://localhost:3000/api/tasks \
@@ -125,14 +125,14 @@ curl -X POST http://localhost:3000/api/tasks \
 
 Environment variables (auto-loaded from `.env` on boot — see `.env.example`):
 
-| Var | Default | Purpose |
-|---|---|---|
-| `OPENROUTER_API_KEY` | — | Live OpenRouter key. Unset → simulation mode. |
-| `OPENROUTER_MODEL` | `openrouter/owl-alpha` | Model slug. |
-| `OPENROUTER_REFERER` / `OPENROUTER_TITLE` | — | OpenRouter attribution headers. |
-| `OPENAI_API_KEY` / `ZAI_API_KEY` | — | Alternative providers (auto-detected). |
-| `PORT` | `3000` | HTTP port. |
-| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error`. |
+| Var                                       | Default                | Purpose                                       |
+| ----------------------------------------- | ---------------------- | --------------------------------------------- |
+| `OPENROUTER_API_KEY`                      | —                      | Live OpenRouter key. Unset → simulation mode. |
+| `OPENROUTER_MODEL`                        | `openrouter/owl-alpha` | Model slug.                                   |
+| `OPENROUTER_REFERER` / `OPENROUTER_TITLE` | —                      | OpenRouter attribution headers.               |
+| `OPENAI_API_KEY` / `ZAI_API_KEY`          | —                      | Alternative providers (auto-detected).        |
+| `PORT`                                    | `3000`                 | HTTP port.                                    |
+| `LOG_LEVEL`                               | `info`                 | `debug` / `info` / `warn` / `error`.          |
 
 Never commit a real `.env` (it's gitignored).
 

@@ -7,7 +7,6 @@ import type {
   LLMProvider,
   Task,
   TaskResult,
-  ToolCall,
 } from "./types";
 import { now } from "./types";
 import { EventBus } from "./event-bus";
@@ -64,7 +63,11 @@ export class Agent {
       state: "running",
       startedAt: task.startedAt ?? now(),
     });
-    await bus.emit("agent.started", { agentId: def.id, role: def.role }, { source: def.id, ...logCtx });
+    await bus.emit(
+      "agent.started",
+      { agentId: def.id, role: def.role },
+      { source: def.id, ...logCtx },
+    );
 
     const buildFresh = (): ChatMessage[] => {
       const msgs: ChatMessage[] = [this.systemMessage(), this.taskMessage(task)];
@@ -89,9 +92,15 @@ export class Agent {
         messages = [...snapshot.messages];
         if (approval.state === "approved") {
           const result = await tools.invoke(approval.tool, approval.args, this.ctx(task));
-          if (result.cost) this.recordSpend(task, approval.tool, result.cost.amount, result.cost.currency);
+          if (result.cost)
+            this.recordSpend(task, approval.tool, result.cost.amount, result.cost.currency);
           memory.pushWorking(def.id, `${approval.tool} → ${result.note ?? "(ok)"}`);
-          messages.push(this.toolResultMessage(snapshot.toolCallId, result.note ?? JSON.stringify(result.data ?? result)));
+          messages.push(
+            this.toolResultMessage(
+              snapshot.toolCallId,
+              result.note ?? JSON.stringify(result.data ?? result),
+            ),
+          );
           steps.push({ ts: now(), results: [result] });
         } else {
           messages.push({
@@ -151,7 +160,11 @@ export class Agent {
         if (decision.effect === "deny") {
           messages.push(this.toolResultMessage(call.id, `DENIED: ${decision.reason}`));
           results.push({ ok: false, error: decision.reason });
-          await bus.emit("tool.denied", { tool: call.name, reason: decision.reason }, { source: def.id, ...logCtx });
+          await bus.emit(
+            "tool.denied",
+            { tool: call.name, reason: decision.reason },
+            { source: def.id, ...logCtx },
+          );
           continue;
         }
         if (decision.effect === "approve" && decision.approvalId) {
@@ -162,18 +175,28 @@ export class Agent {
             taskId: task.id,
           });
           store.updateTaskState(task.id, { state: "awaiting_approval" });
-          await bus.emit("agent.awaiting_approval", { approvalId: decision.approvalId, tool: call.name }, { source: def.id, ...logCtx });
+          await bus.emit(
+            "agent.awaiting_approval",
+            { approvalId: decision.approvalId, tool: call.name },
+            { source: def.id, ...logCtx },
+          );
           steps.push({ ...stepEntry, policyDecisions: decisions });
           return { taskId: task.id, ok: false, steps, awaitingApprovalId: decision.approvalId };
         }
 
-        await bus.emit("tool.call", { tool: call.name, args: call.arguments }, { source: def.id, ...logCtx });
+        await bus.emit(
+          "tool.call",
+          { tool: call.name, args: call.arguments },
+          { source: def.id, ...logCtx },
+        );
         const result = await tools.invoke(call.name, call.arguments, this.ctx(task));
         if (result.cost) {
           this.recordSpend(task, call.name, result.cost.amount, result.cost.currency);
         }
         memory.pushWorking(def.id, `${call.name} → ${result.note ?? "(ok)"}`);
-        messages.push(this.toolResultMessage(call.id, result.note ?? JSON.stringify(result.data ?? result)));
+        messages.push(
+          this.toolResultMessage(call.id, result.note ?? JSON.stringify(result.data ?? result)),
+        );
         results.push(result);
       }
 
@@ -181,7 +204,11 @@ export class Agent {
       stepEntry.results = results;
       stepEntry.policyDecisions = decisions;
       steps.push(stepEntry);
-      log.debug("agent.step", { agentId: def.id, step, tools: response.toolCalls.map((c) => c.name) });
+      log.debug("agent.step", {
+        agentId: def.id,
+        step,
+        tools: response.toolCalls.map((c) => c.name),
+      });
     }
 
     // Step cap exhausted.
@@ -215,7 +242,12 @@ export class Agent {
     };
   }
 
-  private async recordSpend(task: Task, tool: string, amount: number, currency: string): Promise<void> {
+  private async recordSpend(
+    task: Task,
+    tool: string,
+    amount: number,
+    currency: string,
+  ): Promise<void> {
     const { store, def, bus } = this.deps;
     store.recordSpend({
       id: `${tool}_${task.id}_${Date.now()}`,
@@ -228,7 +260,11 @@ export class Agent {
       ref: task.title,
       ts: now(),
     });
-    await bus.emit("spend.recorded", { tool, amount, currency }, { source: def.id, taskId: task.id, tenantId: task.tenantId, agentId: def.id });
+    await bus.emit(
+      "spend.recorded",
+      { tool, amount, currency },
+      { source: def.id, taskId: task.id, tenantId: task.tenantId, agentId: def.id },
+    );
   }
 
   private async finish(
@@ -236,7 +272,7 @@ export class Agent {
     result: TaskResult | undefined,
     steps: AgentRunStep[],
     ok: boolean,
-    error?: string
+    error?: string,
   ): Promise<void> {
     const { store, memory, bus, def, log } = this.deps;
     // Drop any paused snapshots for this terminal task to avoid leaks.
@@ -260,7 +296,7 @@ export class Agent {
     await bus.emit(
       ok ? "agent.succeeded" : "agent.failed",
       { taskId: task.id, steps: steps.length, error },
-      { source: def.id, taskId: task.id, tenantId: task.tenantId, agentId: def.id }
+      { source: def.id, taskId: task.id, tenantId: task.tenantId, agentId: def.id },
     );
     log.audit(ok ? "agent.succeeded" : "agent.failed", { taskId: task.id, agentId: def.id });
   }

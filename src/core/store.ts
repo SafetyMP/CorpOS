@@ -163,7 +163,7 @@ export class Store {
            created_at, started_at, finished_at, error)
          VALUES (@id,@tenant_id,@title,@description,@assigned_to,@created_by,@state,
            @priority,@depends_on,@input,@output,@attempts,@max_attempts,
-           @created_at,@started_at,@finished_at,@error)`
+           @created_at,@started_at,@finished_at,@error)`,
       )
       .run({
         id: task.id,
@@ -191,15 +191,9 @@ export class Store {
     patch: Partial<
       Pick<
         Task,
-        | "state"
-        | "assignedTo"
-        | "attempts"
-        | "startedAt"
-        | "finishedAt"
-        | "error"
-        | "output"
+        "state" | "assignedTo" | "attempts" | "startedAt" | "finishedAt" | "error" | "output"
       >
-    >
+    >,
   ): void {
     const sets: string[] = ["state = @state"];
     const params: Record<string, unknown> = { id, state: patch.state };
@@ -231,9 +225,7 @@ export class Store {
   }
 
   getTask(id: string): Task | undefined {
-    const row = this.db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as
-      | TaskRow
-      | undefined;
+    const row = this.db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as TaskRow | undefined;
     return row ? rowToTask(row) : undefined;
   }
 
@@ -242,9 +234,7 @@ export class Store {
       ? (this.db
           .prepare("SELECT * FROM tasks WHERE state = ? ORDER BY created_at")
           .all(state) as TaskRow[])
-      : (this.db
-          .prepare("SELECT * FROM tasks ORDER BY created_at")
-          .all() as TaskRow[]);
+      : (this.db.prepare("SELECT * FROM tasks ORDER BY created_at").all() as TaskRow[]);
     return rows.map(rowToTask);
   }
 
@@ -254,7 +244,7 @@ export class Store {
         `SELECT * FROM tasks
          WHERE state = 'queued'
          ORDER BY priority DESC, created_at
-         LIMIT 1`
+         LIMIT 1`,
       )
       .get() as TaskRow | undefined;
     return row ? rowToTask(row) : undefined;
@@ -265,7 +255,7 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO events (id, type, ts, source, tenant_id, task_id, agent_id, payload)
-         VALUES (@id,@type,@ts,@source,@tenant_id,@task_id,@agent_id,@payload)`
+         VALUES (@id,@type,@ts,@source,@tenant_id,@task_id,@agent_id,@payload)`,
       )
       .run({
         id: e.id,
@@ -312,7 +302,7 @@ export class Store {
           (id, tenant_id, agent_id, task_id, tool, args, reason, state, cost,
            created_at, decided_at, decided_by)
          VALUES (@id,@tenant_id,@agent_id,@task_id,@tool,@args,@reason,@state,@cost,
-           @created_at,@decided_at,@decided_by)`
+           @created_at,@decided_at,@decided_by)`,
       )
       .run({
         id: a.id,
@@ -330,23 +320,17 @@ export class Store {
       });
   }
 
-  setApprovalState(
-    id: string,
-    state: ApprovalState,
-    decidedBy: string
-  ): void {
+  setApprovalState(id: string, state: ApprovalState, decidedBy: string): void {
     this.db
       .prepare(
         `UPDATE approvals SET state = @state, decided_at = @decided_at,
-         decided_by = @decided_by WHERE id = @id`
+         decided_by = @decided_by WHERE id = @id`,
       )
       .run({ id, state, decided_at: now(), decided_by: decidedBy });
   }
 
   getApproval(id: string): Approval | undefined {
-    const r = this.db
-      .prepare("SELECT * FROM approvals WHERE id = ?")
-      .get(id) as
+    const r = this.db.prepare("SELECT * FROM approvals WHERE id = ?").get(id) as
       | {
           id: string;
           tenant_id: string;
@@ -417,7 +401,7 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO spend (id, tenant_id, agent_id, task_id, tool, amount, currency, ref, ts)
-         VALUES (@id,@tenant_id,@agent_id,@task_id,@tool,@amount,@currency,@ref,@ts)`
+         VALUES (@id,@tenant_id,@agent_id,@task_id,@tool,@amount,@currency,@ref,@ts)`,
       )
       .run({
         id: s.id,
@@ -436,7 +420,7 @@ export class Store {
     const row = this.db
       .prepare(
         `SELECT COALESCE(SUM(amount), 0) AS total FROM spend
-         WHERE tenant_id = ? AND task_id = ?`
+         WHERE tenant_id = ? AND task_id = ?`,
       )
       .get(tenantId, taskId) as { total: number };
     return row.total;
@@ -447,7 +431,7 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO memory (id, tenant_id, agent_id, kind, content, tags, ts)
-         VALUES (@id,@tenant_id,@agent_id,@kind,@content,@tags,@ts)`
+         VALUES (@id,@tenant_id,@agent_id,@kind,@content,@tags,@ts)`,
       )
       .run({
         id: m.id,
@@ -463,7 +447,7 @@ export class Store {
   recall(
     tenantId: string,
     agentId: string,
-    opts: { query?: string; limit?: number; tags?: string[] } = {}
+    opts: { query?: string; limit?: number; tags?: string[] } = {},
   ): MemoryItem[] {
     const limit = opts.limit ?? 25;
     let sql = `SELECT * FROM memory WHERE tenant_id = ? AND agent_id = ?`;

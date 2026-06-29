@@ -1,0 +1,12 @@
+dist/
+node_modules/
+data/
+docs/
+.kilo/
+.playwright-mcp/
+package-lock.json
+*.png
+
+# Legal text — must not be reformatted.
+LICENSE
+NOTICE

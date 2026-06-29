@@ -27,8 +27,7 @@ export function defineTool(spec: ToolSpec): Tool {
 
 function normalizePermission(p: ToolSpec["permission"]): ToolPermission {
   const requiresApproval =
-    p.requiresApproval ??
-    (p.category === "spend" || p.category === "communicate");
+    p.requiresApproval ?? (p.category === "spend" || p.category === "communicate");
   return {
     category: p.category,
     costCap: p.costCap,

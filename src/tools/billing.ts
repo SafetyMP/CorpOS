@@ -79,7 +79,13 @@ export function billingTools(): Tool[] {
         });
         return {
           ok: true,
-          data: { ref, subscriptionId: sub.id, amount, currency: "USD", totalRefunded: alreadyRefunded + amount },
+          data: {
+            ref,
+            subscriptionId: sub.id,
+            amount,
+            currency: "USD",
+            totalRefunded: alreadyRefunded + amount,
+          },
           cost: { amount, currency: "USD" },
           note: `Refund of $${amount} issued on subscription ${sub.id} (ref ${ref}).`,
         };
@@ -123,7 +129,14 @@ export function billingTools(): Tool[] {
         });
         return {
           ok: true,
-          data: { ref, contactId: contact.id, contact: contact.name, amount, currency: "USD", totalCredited: alreadyCredited + amount },
+          data: {
+            ref,
+            contactId: contact.id,
+            contact: contact.name,
+            amount,
+            currency: "USD",
+            totalCredited: alreadyCredited + amount,
+          },
           cost: { amount, currency: "USD" },
           note: `Credit of $${amount} applied to ${contact.name} (ref ${ref}).`,
         };

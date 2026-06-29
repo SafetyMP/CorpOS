@@ -20,7 +20,9 @@ export type SimulationResponse = {
   finishReason?: LLMResponse["finishReason"];
 };
 
-export type SimulationHandler = (req: LLMRequest) => SimulationResponse | Promise<SimulationResponse>;
+export type SimulationHandler = (
+  req: LLMRequest,
+) => SimulationResponse | Promise<SimulationResponse>;
 
 export class SimulationProvider implements LLMProvider {
   readonly id = "simulation";
@@ -36,7 +38,10 @@ export class SimulationProvider implements LLMProvider {
   async complete(req: LLMRequest): Promise<LLMResponse> {
     const sim = this.handler
       ? await this.handler(req)
-      : (this.script[this.cursor++] ?? { content: "(no further scripted response)", finishReason: "stop" });
+      : (this.script[this.cursor++] ?? {
+          content: "(no further scripted response)",
+          finishReason: "stop",
+        });
 
     const toolCalls: ToolCall[] = (sim.toolCalls ?? []).map((tc, i) => ({
       id: `call_${this.cursor}_${i}_${Math.random().toString(36).slice(2, 8)}`,
@@ -290,7 +295,7 @@ export function createProvider(cfg: ProviderConfig = {}): LLMProvider {
     // Auto-detect by whichever key is present (openrouter wins over zai/openai).
     preset =
       [PRESETS.openrouter, PRESETS.zai, PRESETS.openai].find((p) =>
-        p.keyEnv.some((e) => process.env[e])
+        p.keyEnv.some((e) => process.env[e]),
       ) ?? undefined;
   }
 
@@ -298,13 +303,12 @@ export function createProvider(cfg: ProviderConfig = {}): LLMProvider {
 
   if (explicit && explicit !== "simulation" && !apiKey) {
     throw new Error(
-      `LLM provider '${explicit}' requested but no API key found (checked: ${preset?.keyEnv.join(", ") ?? "none"}).`
+      `LLM provider '${explicit}' requested but no API key found (checked: ${preset?.keyEnv.join(", ") ?? "none"}).`,
     );
   }
 
   if (preset && apiKey) {
-    const baseUrl =
-      cfg.baseUrl ?? resolveEnv(preset.baseUrlEnv) ?? preset.defaultBaseUrl;
+    const baseUrl = cfg.baseUrl ?? resolveEnv(preset.baseUrlEnv) ?? preset.defaultBaseUrl;
     const model = cfg.model ?? resolveEnv(preset.modelEnv) ?? preset.defaultModel;
     return new HttpLLMProvider(explicit ?? "openrouter", {
       apiKey,

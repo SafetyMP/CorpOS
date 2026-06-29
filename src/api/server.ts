@@ -163,12 +163,12 @@ function aggregateSpend(services: CompanyServices): {
     .get() as { total: number; count: number } | undefined;
   const byTool = db
     .prepare(
-      "SELECT tool, COALESCE(SUM(amount), 0) AS total, COUNT(*) AS count FROM spend GROUP BY tool ORDER BY total DESC"
+      "SELECT tool, COALESCE(SUM(amount), 0) AS total, COUNT(*) AS count FROM spend GROUP BY tool ORDER BY total DESC",
     )
     .all() as Array<{ tool: string; total: number; count: number }>;
   const byTenant = db
     .prepare(
-      "SELECT tenant_id AS tenantId, COALESCE(SUM(amount), 0) AS total, COUNT(*) AS count FROM spend GROUP BY tenant_id ORDER BY total DESC"
+      "SELECT tenant_id AS tenantId, COALESCE(SUM(amount), 0) AS total, COUNT(*) AS count FROM spend GROUP BY tenant_id ORDER BY total DESC",
     )
     .all() as Array<{ tenantId: string; total: number; count: number }>;
   return {

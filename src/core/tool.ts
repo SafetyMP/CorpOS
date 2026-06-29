@@ -48,11 +48,7 @@ export class ToolRegistry {
     return out;
   }
 
-  async invoke(
-    name: string,
-    args: Record<string, unknown>,
-    ctx: ToolContext
-  ): Promise<ToolResult> {
+  async invoke(name: string, args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
     const tool = this.get(name);
     if (!tool) return { ok: false, error: `Unknown tool: ${name}` };
     const validation = validateArgs(tool, args);
@@ -89,7 +85,7 @@ export function validateArgs(tool: Tool, args: Record<string, unknown>): Validat
 function validateValue(
   value: unknown,
   schema: Record<string, unknown>,
-  path: string
+  path: string,
 ): ValidationResult {
   if (typeof schema !== "object" || schema === null) return { ok: true };
 
@@ -102,7 +98,10 @@ function validateValue(
   if (schema["enum"] !== undefined) {
     const allowed = schema["enum"] as unknown[];
     if (!allowed.includes(value)) {
-      return { ok: false, error: `${path}: ${JSON.stringify(value)} not in enum ${JSON.stringify(allowed)}` };
+      return {
+        ok: false,
+        error: `${path}: ${JSON.stringify(value)} not in enum ${JSON.stringify(allowed)}`,
+      };
     }
   }
 
@@ -112,7 +111,8 @@ function validateValue(
     for (const key of required) {
       if (!(key in obj)) return { ok: false, error: `${path}: missing required '${key}'` };
     }
-    const props = (schema["properties"] as Record<string, Record<string, unknown>> | undefined) ?? {};
+    const props =
+      (schema["properties"] as Record<string, Record<string, unknown>> | undefined) ?? {};
     for (const [key, sub] of Object.entries(props)) {
       if (key in obj) {
         const r = validateValue(obj[key], sub, `${path}.${key}`);

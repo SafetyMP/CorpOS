@@ -46,7 +46,10 @@ export class Orchestrator {
 
   start(): void {
     this.started = true;
-    this.deps.log.info("orchestrator.started", { agents: this.agents.size, concurrency: this.concurrency });
+    this.deps.log.info("orchestrator.started", {
+      agents: this.agents.size,
+      concurrency: this.concurrency,
+    });
     this.schedule();
   }
 
@@ -56,7 +59,11 @@ export class Orchestrator {
 
   async enqueue(task: Task): Promise<Task> {
     this.deps.store.insertTask(task);
-    await this.deps.bus.emit("task.queued", { taskId: task.id, title: task.title }, { source: task.createdBy, tenantId: task.tenantId, taskId: task.id });
+    await this.deps.bus.emit(
+      "task.queued",
+      { taskId: task.id, title: task.title },
+      { source: task.createdBy, tenantId: task.tenantId, taskId: task.id },
+    );
     this.schedule();
     return task;
   }
@@ -82,7 +89,11 @@ export class Orchestrator {
           finishedAt: now(),
           error: `no agent available for assignment '${task.assignedTo ?? "(none)"}'`,
         });
-        await this.deps.bus.emit("task.unassigned", { taskId: task.id }, { source: "orchestrator", tenantId: task.tenantId, taskId: task.id });
+        await this.deps.bus.emit(
+          "task.unassigned",
+          { taskId: task.id },
+          { source: "orchestrator", tenantId: task.tenantId, taskId: task.id },
+        );
         continue;
       }
       this.running++;
@@ -101,13 +112,20 @@ export class Orchestrator {
     const { store, bus, log } = this.deps;
     const attempts = task.attempts + 1;
     store.updateTaskState(task.id, { state: "assigned", assignedTo: agent.id, attempts });
-    await bus.emit("task.assigned", { taskId: task.id, agentId: agent.id }, { source: "orchestrator", tenantId: task.tenantId, taskId: task.id, agentId: agent.id });
+    await bus.emit(
+      "task.assigned",
+      { taskId: task.id, agentId: agent.id },
+      { source: "orchestrator", tenantId: task.tenantId, taskId: task.id, agentId: agent.id },
+    );
 
     try {
       const result = await agent.run(task);
       if (result.awaitingApprovalId) {
         // Paused for approval; orchestrator resumes on decide().
-        log.info("task.awaiting_approval", { taskId: task.id, approvalId: result.awaitingApprovalId });
+        log.info("task.awaiting_approval", {
+          taskId: task.id,
+          approvalId: result.awaitingApprovalId,
+        });
       } else if (!result.ok) {
         await this.maybeRetry(task, result.error ?? "run failed");
       }
@@ -131,7 +149,11 @@ export class Orchestrator {
       setTimeout(() => this.schedule(), backoff);
     } else {
       this.deps.store.updateTaskState(task.id, { state: "failed", finishedAt: now(), error });
-      await this.deps.bus.emit("task.failed", { taskId: task.id, error }, { source: "orchestrator", tenantId: task.tenantId, taskId: task.id });
+      await this.deps.bus.emit(
+        "task.failed",
+        { taskId: task.id, error },
+        { source: "orchestrator", tenantId: task.tenantId, taskId: task.id },
+      );
     }
   }
 

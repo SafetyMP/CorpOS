@@ -23,12 +23,14 @@ export class CoreLogger implements Logger {
   private bus?: EventBus;
   private sink: (entry: LogEntry) => void;
 
-  constructor(opts: {
-    scope?: string;
-    minLevel?: LogLevel;
-    bus?: EventBus;
-    sink?: (entry: LogEntry) => void;
-  } = {}) {
+  constructor(
+    opts: {
+      scope?: string;
+      minLevel?: LogLevel;
+      bus?: EventBus;
+      sink?: (entry: LogEntry) => void;
+    } = {},
+  ) {
     this.scope = opts.scope ?? "app";
     this.minLevel = opts.minLevel ?? (process.env.LOG_LEVEL as LogLevel) ?? "info";
     this.bus = opts.bus;
@@ -37,9 +39,7 @@ export class CoreLogger implements Logger {
       ((e) => {
         const line = `[${e.ts}] ${e.level.toUpperCase()} ${e.scope}: ${e.msg}`;
         const stream = e.level === "error" || e.level === "warn" ? process.stderr : process.stdout;
-        stream.write(
-          e.meta ? `${line} ${JSON.stringify(e.meta)}\n` : `${line}\n`
-        );
+        stream.write(e.meta ? `${line} ${JSON.stringify(e.meta)}\n` : `${line}\n`);
       });
   }
 

@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  defineTool,
-  ToolRegistry,
-  validateArgs,
-  schemaOf,
-} from "../src/core/index";
+import { defineTool, ToolRegistry, validateArgs, schemaOf } from "../src/core/index";
 import { mkCtx } from "./helpers";
 
 const echo = defineTool({

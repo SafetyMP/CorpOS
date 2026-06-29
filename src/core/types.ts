@@ -59,13 +59,7 @@ export interface LLMProvider {
 }
 
 // ─── Tools ───────────────────────────────────────────────────────────
-export type ToolCategory =
-  | "read"
-  | "write"
-  | "spend"
-  | "communicate"
-  | "system"
-  | "delegate";
+export type ToolCategory = "read" | "write" | "spend" | "communicate" | "system" | "delegate";
 
 export interface ToolPermission {
   category: ToolCategory;
@@ -90,10 +84,7 @@ export interface ToolResult {
   note?: string;
 }
 
-export type ToolHandler = (
-  args: Record<string, unknown>,
-  ctx: ToolContext
-) => Promise<ToolResult>;
+export type ToolHandler = (args: Record<string, unknown>, ctx: ToolContext) => Promise<ToolResult>;
 
 export interface Tool {
   name: string;
@@ -168,13 +159,7 @@ export interface MemoryItem {
 
 // ─── Tasks ───────────────────────────────────────────────────────────
 export type TaskState =
-  | "queued"
-  | "assigned"
-  | "running"
-  | "awaiting_approval"
-  | "succeeded"
-  | "failed"
-  | "cancelled";
+  "queued" | "assigned" | "running" | "awaiting_approval" | "succeeded" | "failed" | "cancelled";
 
 export interface TaskResult {
   summary: string;
