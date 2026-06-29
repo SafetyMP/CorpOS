@@ -1,22 +1,31 @@
 # CorpOS
 
-> An autonomous company operating system — a TypeScript multi-agent runtime with a policy, approval, and audit control plane.
+> A reference architecture for an autonomous company — a TypeScript multi-agent runtime with a policy, approval, and audit control plane.
 
-Department "agents" (support, sales, ops, finance, engineering) reason via an LLM, call permissioned tools, and coordinate through a shared orchestrator. **Every consequential action is policy-gated**: spend, external comms, and mutations route through an approval engine and produce audit events. Nothing destructive runs autonomously.
+[![CI](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml/badge.svg)](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A5%2020-green.svg)](package.json)
+[![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen.svg)](test)
 
-The system is **simulation-first**: the full multi-agent loop, tool-calling, approval gates, spend tracking, and dashboard are demonstrable and tested end-to-end with **no LLM key and no network**. Plug in an OpenRouter key to switch the agents to live reasoning.
+<p align="center">
+  <img src="docs/img/dashboard.png" alt="CorpOS control-plane dashboard" width="860" />
+</p>
+
+CorpOS is a **greenfield, architecture-first** system: a clean, layered design for running an organization of LLM-driven agents where **every consequential action is policy-gated**. Department agents (support, sales, ops, finance, engineering) reason via an LLM, call permissioned tools, and coordinate through a shared orchestrator. Spend, external comms, and mutations never run autonomously — they route through an approval engine and produce audit events.
+
+It's built **simulation-first**: the entire multi-agent loop, tool-calling, approval gates, spend tracking, and dashboard are fully demonstrable and tested with **no LLM key and no network**. Drop in an OpenRouter key to switch the agents to live reasoning.
 
 ---
 
-## Highlights
+## Design principles
 
-- **Reasoning loop** — agents reason → call tools → observe results → repeat, with a step cap and a conversation-preserving pause/resume across approval gates.
-- **Policy engine** — allow / deny / approve decisions, glob-matched rules, per-task spend caps, and human approval gates. The single chokepoint for every consequential action.
-- **Typed tool registry** — JSON-schema-validated tools with a permission model (`read` / `write` / `spend` / `communicate` / `system` / `delegate`).
-- **Control plane** — Express REST + WebSocket API, and a real-time dashboard (live task board, agent statuses, pending approvals with one-click Approve/Reject, spend meter, color-coded event feed).
-- **One-click demo** — a curated 5-agent scenario that auto-plays the full policy-gated loop.
-- **Deterministic by default** — the `SimulationProvider` returns scripted, per-agent responses so the whole system is reproducible without a key.
-- **Live when you want it** — OpenRouter (Owl Alpha) via its OpenAI-compatible endpoint; Z.AI / OpenAI also supported.
+CorpOS is built as an open reference architecture, not a black box. The decisions that shape it:
+
+- **Architecture over implementation.** The value lives in the layers — a typed runtime, a permissioned tool registry, a policy chokepoint, and a control plane — not in any one agent or integration.
+- **Policy as the single chokepoint.** There is exactly one place a consequential action is authorized. Tools can't bypass it; agents can't bypass it. Auditability is a side-effect of the design, not a feature bolted on.
+- **Simulation-first = reproducible.** The reasoning loop is LLM-driven but fully deterministic under the `SimulationProvider`. The whole system builds and tests in CI with zero network and zero cost.
+- **Human-in-the-loop by default.** Consequential actions pause for approval. Agents resume from the exact conversation state where they paused — no lost context, no re-prompting.
+- **Boring, durable tech.** TypeScript, SQLite, Express, vanilla web. No agent framework lock-in; every primitive is readable in a single file.
 
 ## Architecture
 
@@ -40,19 +49,23 @@ The system is **simulation-first**: the full multi-agent loop, tool-calling, app
                   OpenRouter / Z.AI / OpenAI   spend · memory · audit
 ```
 
-- **Runtime** (`src/core/`): `types`, `llm`, `logger`(+audit), `event-bus`, `store` (SQLite via better-sqlite3), `tool`, `tool-builder`, `policy`, `memory`, `agent`, `orchestrator`, `app` (composition root).
-- **Agents** (`src/agents/`): one file per department; each declares a system prompt and a tool subset.
-- **Tools** (`src/tools/`): CRM, comms, billing, knowledge, system packs over a shared seeded data layer, plus an agent-to-agent `delegate` tool.
-- **Control plane** (`src/api/`, `src/dashboard/`): REST + WebSocket server and the static dashboard.
+| Layer | Path | Responsibility |
+|---|---|---|
+| **Runtime** | `src/core/` | types, llm, logger(+audit), event-bus, store (SQLite), tool registry, policy engine, memory, agent loop, orchestrator |
+| **Agents** | `src/agents/` | one file per department — system prompt + tool subset |
+| **Tools** | `src/tools/` | CRM, comms, billing, knowledge, system packs over shared seeded state + agent-to-agent delegate |
+| **Control plane** | `src/api/`, `src/dashboard/` | Express REST + WebSocket + static dashboard |
 
 ## Quick start
 
 ```bash
+git clone https://github.com/SafetyMP/CorpOS.git
+cd CorpOS
 npm install
 npm run dev        # boot the server + dashboard on $PORT or 3000
 ```
 
-Open `http://localhost:3000/` (or your `$PORT`). With no key set, agents run in **simulation** — click **▶ Run demo** to watch a curated 5-agent scenario auto-play through real approval gates.
+Open `http://localhost:3000/`. With no key set, agents run in **simulation** — click **▶ Run demo** to watch a curated 5-agent scenario auto-play through real approval gates.
 
 ### Go live (OpenRouter / Owl Alpha)
 
@@ -64,7 +77,19 @@ cp .env.example .env
 npm run dev
 ```
 
-The header badge flips from `simulation` to `live · openrouter`, and agents reason against the real model. Demo mode drives genuine reasoning through all five agents.
+The header badge flips from `simulation` to `live · openrouter`, and agents reason against the real model. Z.AI and OpenAI are also supported (auto-detected by key).
+
+## Demo mode
+
+One click on **▶ Run demo** posts a curated 5-agent scenario — support refund, ops service restart, finance goodwill credit, sales follow-up, engineer diagnosis — and **auto-resolves every approval gate** so the full policy-gated loop plays out without manual steps. Deterministic in simulation; genuine reasoning when live.
+
+## How an action gets approved
+
+1. A task is enqueued; the orchestrator assigns it to an agent.
+2. The agent reasons and emits tool calls. Each call is evaluated by the **policy engine**.
+3. A `read` call runs; a `spend` / `communicate` / mutating call **pauses** and creates a pending approval.
+4. A human approves via the dashboard or `POST /api/approvals/:id/decide`.
+5. On approval the agent **resumes from where it paused** (conversation preserved), executes the action, records spend, and produces a final summary — all audited.
 
 ## Commands
 
@@ -77,15 +102,7 @@ The header badge flips from `simulation` to `live · openrouter`, and agents rea
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run build` | Compile to `dist/` |
 
-## How an action gets approved
-
-1. A task is enqueued; the orchestrator assigns it to an agent.
-2. The agent reasons and emits tool calls. Each call is evaluated by the **policy engine**.
-3. A `read` call runs; a `spend` / `communicate` / mutating call **pauses** and creates a pending approval.
-4. A human approves via the dashboard or `POST /api/approvals/:id/decide`.
-5. On approval the agent **resumes from where it paused** (conversation preserved), executes the action, records spend, and produces a final summary — all audited.
-
-### REST API (selected)
+## REST + WebSocket API (selected)
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -106,7 +123,7 @@ curl -X POST http://localhost:3000/api/tasks \
 
 ## Configuration
 
-Environment variables (load via a `.env` file — auto-loaded on boot, see `.env.example`):
+Environment variables (auto-loaded from `.env` on boot — see `.env.example`):
 
 | Var | Default | Purpose |
 |---|---|---|
@@ -131,21 +148,21 @@ src/
   index.ts      composition root — wires core + agents + tools + server, loads .env
   scenario.ts   deterministic multi-agent demo
 test/           vitest unit + e2e (deterministic via SimulationProvider)
+.github/        CI workflow
+docs/           screenshots / assets
 ```
 
 ## Tech stack
 
-TypeScript (ESM, strict) · Node ≥ 20 · better-sqlite3 · Express · ws · zod · nanoid · vitest · tsx. Dashboard is dependency-free vanilla HTML/CSS/JS.
+TypeScript (ESM, strict) · Node ≥ 20 · better-sqlite3 · Express · ws · zod · nanoid · vitest · tsx. The dashboard is dependency-free vanilla HTML/CSS/JS.
 
-## Development notes
+## Security
 
-- The reasoning loop is non-deterministic under a live LLM; deterministic tests rely on `SimulationProvider` scripts and run without network.
-- SQLite (`data/company.db`) is created at runtime and gitignored.
-- `AGENTS.md` and `CONTEXT.md` carry agent-assisted development guidance and project context; `.kilo/` holds the associated Kilo tooling (commands, skills, run-scripts). None of these affect runtime.
+CorpOS is a **reference architecture and research/demo project, not production-hardened.** Consequential actions are policy-gated by design, but the control plane has no authentication, authorization, or rate limiting — do not expose it to untrusted networks. See [SECURITY.md](SECURITY.md) for the full posture and vulnerability reporting.
 
-## Safety posture
+## Contributing
 
-This is a research/demo project, **not production-hardened**. Consequential actions are policy-gated by design, but there are no authn/authz, rate limits, or PII controls on the API. Do not expose the control plane to untrusted networks, and review every approval before going live against real systems.
+Contributions are welcome. The codebase is intentionally readable and layered — each core primitive fits in a single file. See [AGENTS.md](AGENTS.md) for the engineering rules and conventions the project follows (commit style, verification, code style) and [CONTEXT.md](CONTEXT.md) for architecture orientation. Run `npm test` before opening a PR; CI enforces typecheck + tests.
 
 ## License
 
