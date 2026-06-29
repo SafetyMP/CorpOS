@@ -14,13 +14,15 @@ updates:
       types:
         patterns:
           - "@types/*"
-          - "@eslint/*"
-          - "typescript-eslint"
-      eslint:
+      # Keep the entire lint/format toolchain in one PR so peer deps
+      # (e.g. @eslint/js ↔ eslint ↔ typescript-eslint) stay compatible.
+      lint:
         patterns:
           - "eslint"
-          - "prettier"
+          - "@eslint/*"
+          - "typescript-eslint"
           - "eslint-config-prettier"
+          - "prettier"
     labels:
       - dependencies
       - javascript
