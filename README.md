@@ -67,6 +67,22 @@ npm run dev        # boot the server + dashboard on $PORT or 3000
 
 Open `http://localhost:3000/`. With no key set, agents run in **simulation** — click **▶ Run demo** to watch a curated 5-agent scenario auto-play through real approval gates.
 
+### Live demo (one-click deploy)
+
+No clone required — run the control plane in the cloud in simulation mode, then
+click **▶ Run demo**:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/SafetyMP/CorpOS)
+
+Prefer Fly.io? It's one command (uses the published image):
+
+```bash
+flyctl launch --image ghcr.io/safelymp/corpos:0.1.0
+```
+
+Set `OPENROUTER_API_KEY` in either dashboard to switch the agents from
+simulation to live reasoning. See [Deployment](#deployment) below.
+
 ### Go live (OpenRouter / Owl Alpha)
 
 ```bash
@@ -155,6 +171,39 @@ docs/           screenshots / assets
 ## Tech stack
 
 TypeScript (ESM, strict) · Node ≥ 20 · better-sqlite3 · Express · ws · zod · nanoid · vitest · tsx. The dashboard is dependency-free vanilla HTML/CSS/JS.
+
+## Deployment
+
+A prebuilt multi-arch image is published to the GitHub Container Registry on
+every push to `main` and every release:
+
+```bash
+docker run --rm -p 3000:3000 ghcr.io/safelymp/corpos:latest
+# → http://localhost:3000  (simulation mode, zero config)
+```
+
+Go live by passing a key:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e OPENROUTER_API_KEY=sk-or-... \
+  -e OPENROUTER_MODEL=<your Owl Alpha slug> \
+  ghcr.io/safelymp/corpos:latest
+```
+
+Managed options (both auto-detect the `Dockerfile`, both run the simulation
+demo by default):
+
+- **Render** — one click via the "Deploy to Render" button above; configured by
+  [`render.yaml`](render.yaml).
+- **Fly.io** — `flyctl launch --image ghcr.io/safelymp/corpos:0.1.0`; configured
+  by [`fly.toml`](fly.toml), with a release-triggered
+  [deploy workflow](.github/workflows/deploy.yml) (needs `FLY_API_TOKEN`).
+
+⚠️ **Do not deploy to a public URL without reading [SECURITY.md](SECURITY.md)
+first** — the control plane has no authentication, and anyone who can reach it
+can approve gated actions. For a public demo, keep it in simulation mode and
+restart it periodically (the in-memory agent state resets on restart).
 
 ## Security
 

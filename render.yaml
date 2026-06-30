@@ -1,0 +1,19 @@
+# Render Blueprint — one-click deploy of the CorpOS control plane.
+# Click "Deploy to Render" in the README, or: render deploy
+# Runs in simulation mode by default (no API key). Set OPENROUTER_API_KEY
+# in the Render dashboard to switch agents to live reasoning.
+services:
+  - type: web
+    name: corpos
+    env: docker
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      # OPENROUTER_API_KEY: set in the dashboard to go live (leave unset for simulation)
+      # OPENROUTER_MODEL: your Owl Alpha slug
