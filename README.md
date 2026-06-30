@@ -67,6 +67,11 @@ npm run dev        # boot the server + dashboard on $PORT or 3000
 
 Open `http://localhost:3000/`. With no key set, agents run in **simulation** — click **▶ Run demo** to watch a curated 5-agent scenario auto-play through real approval gates.
 
+> **Node version:** requires Node 20+ (verified through Node 26). If `npm install`
+> fails while compiling `better-sqlite3` (a V8-API error from node-gyp), you're on
+> an unsupported Node — use Node 22 LTS. On supported versions the install uses a
+> prebuilt binary, so no compiler is needed.
+
 ### Live demo (one-click deploy)
 
 No clone required — run the control plane in the cloud in simulation mode, then

@@ -42,7 +42,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0",
+    "better-sqlite3": "^12.11.1",
     "express": "^5.2.1",
     "nanoid": "^5.0.7",
     "ws": "^8.18.0",
