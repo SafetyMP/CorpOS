@@ -46,7 +46,7 @@
     "express": "^5.2.1",
     "nanoid": "^5.0.7",
     "ws": "^8.18.0",
-    "zod": "^3.23.8"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
