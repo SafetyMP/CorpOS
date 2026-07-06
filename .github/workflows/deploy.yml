@@ -27,7 +27,7 @@ jobs:
 
       - name: Set up Flyctl
         if: ${{ secrets.FLY_API_TOKEN != '' }}
-        uses: superfly/flyctl-actions/setup-flyctl@1.5
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
 
       - name: Deploy
         if: ${{ secrets.FLY_API_TOKEN != '' }}
