@@ -6,6 +6,7 @@ import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
 
 import { newTask, type CompanyServices, type TaskState } from "../core";
+import { installDashboardAuth } from "./auth";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = resolve(__dirname, "../dashboard/public");
@@ -19,6 +20,7 @@ export interface HttpServerHandles {
 export function createHttpServer(services: CompanyServices): HttpServerHandles {
   const app = express();
   app.use(express.json());
+  installDashboardAuth(app);
 
   // Suppress the browser's default favicon request (no asset shipped).
   app.get("/favicon.ico", (_req, res) => {
@@ -83,10 +85,13 @@ export function createHttpServer(services: CompanyServices): HttpServerHandles {
     const id = req.params.id;
     const body = req.body ?? {};
     const decision = body.decision;
-    const by = typeof body.by === "string" ? body.by : "human";
+    let by = typeof body.by === "string" ? body.by : "human";
     if (decision !== "approved" && decision !== "rejected") {
       res.status(400).json({ error: "decision must be 'approved' or 'rejected'" });
       return;
+    }
+    if (process.env.DASHBOARD_API_TOKEN?.trim()) {
+      by = "dashboard-operator";
     }
     const approval = services.policy.decide(id, decision, by);
     if (!approval) {
