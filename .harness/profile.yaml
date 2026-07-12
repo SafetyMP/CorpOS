@@ -6,27 +6,27 @@ signed: null
 integration_executor: null
 stack:
   detected:
-  - node
+    - node
   primary: node
   monorepo: false
   compose: false
 requires:
   files:
-  - AGENTS.md
-  - scripts/verify.sh
-  - .cursor/hooks.json
-  - .harness/profile.yaml
-  - .harness/VERSION
+    - AGENTS.md
+    - scripts/verify.sh
+    - .cursor/hooks.json
+    - .harness/profile.yaml
+    - .harness/VERSION
   hooks:
     stop: verify-on-stop
   commands:
     verify: ./scripts/verify.sh
 bundles_applied:
-- cloud-guards
-- verify-on-stop
+  - cloud-guards
+  - verify-on-stop
 forbidden:
-- path: specs/MANDATE.md
-  condition: 'Status: ACTIVE without fleet-instruction bundle'
+  - path: specs/MANDATE.md
+    condition: "Status: ACTIVE without fleet-instruction bundle"
 verify:
   timeout_seconds: 120
   loop_limit: 3
