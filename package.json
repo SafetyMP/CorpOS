@@ -27,8 +27,10 @@
     "typescript"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=20",
+    "npm": ">=10.9.2 <11"
   },
+  "packageManager": "npm@10.9.2",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",

@@ -37,6 +37,7 @@ TypeScript multi-agent runtime with policy, approval, and audit control plane. S
 ## Definition of Done
 
 ```bash
+npx npm@10.9.2 ci
 ./scripts/verify.sh
 ```
 
