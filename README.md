@@ -82,7 +82,7 @@ click **▶ Run demo**:
 Prefer Fly.io? It's one command (uses the published image):
 
 ```bash
-flyctl launch --image ghcr.io/safelymp/corpos:0.1.0
+flyctl launch --image ghcr.io/safetymp/corpos:0.1.0
 ```
 
 Set `OPENROUTER_API_KEY` in either dashboard to switch the agents from
@@ -183,7 +183,7 @@ A prebuilt multi-arch image is published to the GitHub Container Registry on
 every push to `main` and every release:
 
 ```bash
-docker run --rm -p 3000:3000 ghcr.io/safelymp/corpos:latest
+docker run --rm -p 3000:3000 ghcr.io/safetymp/corpos:latest
 # → http://localhost:3000  (simulation mode, zero config)
 ```
 
@@ -193,7 +193,7 @@ Go live by passing a key:
 docker run --rm -p 3000:3000 \
   -e OPENROUTER_API_KEY=sk-or-... \
   -e OPENROUTER_MODEL=<your Owl Alpha slug> \
-  ghcr.io/safelymp/corpos:latest
+  ghcr.io/safetymp/corpos:latest
 ```
 
 Managed options (both auto-detect the `Dockerfile`, both run the simulation
@@ -201,18 +201,18 @@ demo by default):
 
 - **Render** — one click via the "Deploy to Render" button above; configured by
   [`render.yaml`](render.yaml).
-- **Fly.io** — `flyctl launch --image ghcr.io/safelymp/corpos:0.1.0`; configured
+- **Fly.io** — `flyctl launch --image ghcr.io/safetymp/corpos:0.1.0`; configured
   by [`fly.toml`](fly.toml), with a release-triggered
   [deploy workflow](.github/workflows/deploy.yml) (needs `FLY_API_TOKEN`).
 
 ⚠️ **Do not deploy to a public URL without reading [SECURITY.md](SECURITY.md)
 first** — the control plane has no authentication, and anyone who can reach it
 can approve gated actions. For a public demo, keep it in simulation mode and
-restart it periodically (the in-memory agent state resets on restart).
+restart it periodically (SQLite state at `data/company.db` persists across restarts unless the volume is cleared).
 
 ## Security
 
-CorpOS is a **reference architecture and research/demo project, not production-hardened.** Consequential actions are policy-gated by design, but the control plane has no authentication, authorization, or rate limiting — do not expose it to untrusted networks. See [SECURITY.md](SECURITY.md) for the full posture and vulnerability reporting.
+CorpOS is a **reference architecture and research/demo project, not production-hardened.** Consequential actions are policy-gated by design, but the control plane has no authentication by default — optional `DASHBOARD_API_TOKEN` gates approval mutations. Do not expose it to untrusted networks. See [SECURITY.md](SECURITY.md) for the full posture and vulnerability reporting.
 
 ## Contributing
 
