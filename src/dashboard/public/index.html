@@ -799,13 +799,40 @@
       "use strict";
       const $ = (id) => document.getElementById(id);
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-      const esc = (s) =>
-        String(s ?? "").replace(
-          /[&<>"']/g,
-          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
-        );
-      const stateLabel = (s) => s.replace(/_/g, " ");
+      const stateLabel = (s) => String(s ?? "").replace(/_/g, " ");
       const MAX_EVENTS = 200;
+
+      const KNOWN_TASK_STATES = new Set([
+        "pending",
+        "assigned",
+        "running",
+        "awaiting_approval",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "unknown",
+      ]);
+
+      function safeTaskState(state) {
+        const s = String(state ?? "unknown");
+        return KNOWN_TASK_STATES.has(s) ? s : "unknown";
+      }
+
+      function safeEventTypeClass(type) {
+        const slug = String(type ?? "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
+        return "ev t-" + slug;
+      }
+
+      function clearEl(el) {
+        while (el.firstChild) el.removeChild(el.firstChild);
+      }
+
+      function textEl(tag, text, className) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        el.textContent = String(text ?? "");
+        return el;
+      }
 
       const AVATAR_COLORS = [
         "#5b9bff",
@@ -833,11 +860,19 @@
         const sock = new WebSocket(wsUrl());
         sock.onopen = () => {
           $("conn").className = "badge-pill ok";
-          $("conn").innerHTML = '<span class="dot"></span>connected';
+          clearEl($("conn"));
+          const dot = document.createElement("span");
+          dot.className = "dot";
+          $("conn").appendChild(dot);
+          $("conn").appendChild(document.createTextNode("connected"));
         };
         sock.onclose = () => {
           $("conn").className = "badge-pill bad";
-          $("conn").innerHTML = '<span class="dot"></span>reconnecting…';
+          clearEl($("conn"));
+          const dot = document.createElement("span");
+          dot.className = "dot";
+          $("conn").appendChild(dot);
+          $("conn").appendChild(document.createTextNode("reconnecting…"));
           setTimeout(connect, 1500);
         };
         sock.onerror = () => {
@@ -902,12 +937,15 @@
       }
 
       function renderKpis() {
-        const byState = {};
-        for (const t of pendingTasks) byState[t.state] = (byState[t.state] || 0) + 1;
+        const byState = new Map();
+        for (const t of pendingTasks) {
+          const st = safeTaskState(t.state);
+          byState.set(st, (byState.get(st) || 0) + 1);
+        }
         $("k-tasks").textContent = pendingTasks.length;
-        $("k-running").textContent = (byState["running"] || 0) + (byState["assigned"] || 0);
-        $("k-awaiting").textContent = byState["awaiting_approval"] || 0;
-        $("k-succeeded").textContent = byState["succeeded"] || 0;
+        $("k-running").textContent = (byState.get("running") || 0) + (byState.get("assigned") || 0);
+        $("k-awaiting").textContent = byState.get("awaiting_approval") || 0;
+        $("k-succeeded").textContent = byState.get("succeeded") || 0;
         $("k-approvals").textContent = pendingApprovals.length;
         $("k-agents").textContent = agents.length;
         $("agentCount").textContent = agents.length;
@@ -918,166 +956,170 @@
       function renderAgentSelect() {
         const sel = $("f-agent");
         const cur = sel.value;
-        const opts =
-          '<option value="">(auto)</option>' +
-          agents
-            .map(
-              (a) =>
-                '<option value="' +
-                esc(a.id) +
-                '">' +
-                esc(a.name) +
-                " · " +
-                esc(a.role) +
-                "</option>",
-            )
-            .join("");
-        if (sel.innerHTML !== opts) sel.innerHTML = opts;
-        sel.value = cur;
+        clearEl(sel);
+        const autoOpt = document.createElement("option");
+        autoOpt.value = "";
+        autoOpt.textContent = "(auto)";
+        sel.appendChild(autoOpt);
+        for (const a of agents) {
+          const opt = document.createElement("option");
+          opt.value = String(a.id ?? "");
+          opt.textContent = String(a.name ?? "") + " · " + String(a.role ?? "");
+          sel.appendChild(opt);
+        }
+        if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
       }
 
       function busyAgentIds() {
         const set = new Set();
         for (const t of pendingTasks) {
-          if (t.assignedTo && !TERMINAL.includes(t.state)) set.add(t.assignedTo);
+          if (t.assignedTo && !TERMINAL.includes(safeTaskState(t.state))) set.add(t.assignedTo);
         }
         return set;
       }
 
       function renderAgents() {
+        const root = $("agents");
         if (!agents.length) {
-          $("agents").innerHTML = '<div class="empty">no agents registered</div>';
+          renderEmpty(root, "no agents registered");
           return;
         }
+        clearEl(root);
         const busy = busyAgentIds();
-        $("agents").innerHTML = agents
-          .map((a, i) => {
-            const initial = esc((a.name || a.id || "?").trim().charAt(0).toUpperCase());
-            const isBusy = busy.has(a.id);
-            return (
-              '<div class="agent' +
-              (isBusy ? " busy" : "") +
-              '">' +
-              '<div class="head">' +
-              '<div class="avatar" style="background:' +
-              AVATAR_COLORS[i % AVATAR_COLORS.length] +
-              '">' +
-              initial +
-              "</div>" +
-              '<div><div class="name">' +
-              esc(a.name) +
-              "</div>" +
-              '<div class="role">' +
-              esc(a.role) +
-              "</div></div>" +
-              '<div class="status"><span class="status-dot"></span>' +
-              (isBusy ? "busy" : "idle") +
-              "</div>" +
-              "</div>" +
-              '<div class="chips">' +
-              (a.tools || []).map((t) => '<span class="chip">' + esc(t) + "</span>").join("") +
-              "</div>" +
-              "</div>"
-            );
-          })
-          .join("");
+        agents.forEach((a, i) => {
+          const card = document.createElement("div");
+          card.className = "agent" + (busy.has(a.id) ? " busy" : "");
+          const head = document.createElement("div");
+          head.className = "head";
+          const avatar = document.createElement("div");
+          avatar.className = "avatar";
+          avatar.style.background = AVATAR_COLORS[i % AVATAR_COLORS.length];
+          avatar.textContent = String(a.name || a.id || "?")
+            .trim()
+            .charAt(0)
+            .toUpperCase();
+          const meta = document.createElement("div");
+          meta.appendChild(textEl("div", a.name, "name"));
+          meta.appendChild(textEl("div", a.role, "role"));
+          const status = document.createElement("div");
+          status.className = "status";
+          const statusDot = document.createElement("span");
+          statusDot.className = "status-dot";
+          status.appendChild(statusDot);
+          status.appendChild(document.createTextNode(busy.has(a.id) ? "busy" : "idle"));
+          head.appendChild(avatar);
+          head.appendChild(meta);
+          head.appendChild(status);
+          const chips = document.createElement("div");
+          chips.className = "chips";
+          for (const tool of a.tools || []) {
+            chips.appendChild(textEl("span", tool, "chip"));
+          }
+          card.appendChild(head);
+          card.appendChild(chips);
+          root.appendChild(card);
+        });
+      }
+
+      function renderEmpty(parent, message, className, style) {
+        clearEl(parent);
+        const el = textEl("div", message, className || "empty");
+        if (style) el.setAttribute("style", style);
+        parent.appendChild(el);
       }
 
       function renderTasks() {
+        const root = $("tasks");
         if (!pendingTasks.length) {
-          $("tasks").innerHTML =
-            '<div class="empty" style="padding:0.85rem 0.95rem">no tasks yet</div>';
+          renderEmpty(root, "no tasks yet", "empty", "padding:0.85rem 0.95rem");
           return;
         }
+        clearEl(root);
         const list = pendingTasks.slice().reverse();
-        $("tasks").innerHTML = list
-          .map((t) => {
-            const out =
-              t.output && t.output.summary
-                ? '<div class="output">' +
-                  esc(t.output.summary.slice(0, 200)) +
-                  (t.output.summary.length > 200 ? "…" : "") +
-                  "</div>"
-                : t.error
-                  ? '<div class="output">' + esc(t.error) + "</div>"
-                  : "";
-            return (
-              '<div class="task ' +
-              (t.state === "failed" ? "failed" : "") +
-              '">' +
-              '<div class="top">' +
-              '<span class="badge s-' +
-              esc(t.state) +
-              '">' +
-              stateLabel(t.state) +
-              "</span>" +
-              '<div class="title">' +
-              esc(t.title) +
-              "</div>" +
-              "</div>" +
-              '<div class="meta">' +
-              (t.assignedTo
-                ? "<span>→ " + esc(t.assignedTo) + "</span>"
-                : "<span>unassigned</span>") +
-              '<span class="sep">·</span><span>prio ' +
-              esc(t.priority) +
-              "</span>" +
-              '<span class="sep">·</span><span>' +
-              esc((t.createdAt || "").slice(11, 19)) +
-              "</span>" +
-              (t.attempts > 1
-                ? '<span class="sep">·</span><span>try ' + esc(t.attempts) + "</span>"
-                : "") +
-              "</div>" +
-              out +
-              "</div>"
-            );
-          })
-          .join("");
+        for (const t of list) {
+          const state = safeTaskState(t.state);
+          const card = document.createElement("div");
+          card.className = "task" + (state === "failed" ? " failed" : "");
+          const top = document.createElement("div");
+          top.className = "top";
+          top.appendChild(textEl("span", stateLabel(state), "badge s-" + state));
+          top.appendChild(textEl("div", t.title, "title"));
+          card.appendChild(top);
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          if (t.assignedTo) {
+            meta.appendChild(document.createTextNode("→ " + String(t.assignedTo)));
+          } else {
+            meta.appendChild(textEl("span", "unassigned"));
+          }
+          meta.appendChild(textEl("span", "·", "sep"));
+          meta.appendChild(textEl("span", "prio " + String(t.priority ?? "")));
+          meta.appendChild(textEl("span", "·", "sep"));
+          meta.appendChild(textEl("span", String((t.createdAt || "").slice(11, 19))));
+          if (t.attempts > 1) {
+            meta.appendChild(textEl("span", "·", "sep"));
+            meta.appendChild(textEl("span", "try " + String(t.attempts)));
+          }
+          card.appendChild(meta);
+          if (t.output && t.output.summary) {
+            const summary = String(t.output.summary);
+            const clipped = summary.slice(0, 200) + (summary.length > 200 ? "…" : "");
+            card.appendChild(textEl("div", clipped, "output"));
+          } else if (t.error) {
+            card.appendChild(textEl("div", t.error, "output"));
+          }
+          root.appendChild(card);
+        }
       }
 
       function renderApprovals() {
+        const root = $("approvals");
         if (!pendingApprovals.length) {
-          $("approvals").innerHTML =
-            '<div class="empty" style="padding:0.85rem 0.95rem">nothing awaiting approval</div>';
+          renderEmpty(root, "nothing awaiting approval", "empty", "padding:0.85rem 0.95rem");
           return;
         }
-        $("approvals").innerHTML = pendingApprovals
-          .map(
-            (a) =>
-              '<div class="approval" data-id="' +
-              esc(a.id) +
-              '">' +
-              '<div class="top">' +
-              '<span class="tool">' +
-              esc(a.tool) +
-              "</span>" +
-              (a.cost
-                ? '<span class="cost">$' +
-                  esc(Number(a.cost.amount).toFixed(2)) +
-                  " " +
-                  esc(a.cost.currency) +
-                  "</span>"
-                : "") +
-              "</div>" +
-              '<div class="meta">agent ' +
-              esc(a.agentId) +
-              " · task " +
-              esc((a.taskId || "").slice(-6)) +
-              "</div>" +
-              '<div class="args">' +
-              esc(JSON.stringify(a.args)) +
-              "</div>" +
-              '<div class="reason">' +
-              esc(a.reason) +
-              "</div>" +
-              '<div class="actions">' +
-              '<button class="approve" data-decision="approved">Approve</button>' +
-              '<button class="reject" data-decision="rejected">Reject</button>' +
-              "</div>" +
-              "</div>",
-          )
-          .join("");
+        clearEl(root);
+        for (const a of pendingApprovals) {
+          const card = document.createElement("div");
+          card.className = "approval";
+          card.dataset.id = String(a.id ?? "");
+          const top = document.createElement("div");
+          top.className = "top";
+          top.appendChild(textEl("span", a.tool, "tool"));
+          if (a.cost) {
+            top.appendChild(
+              textEl(
+                "span",
+                "$" + Number(a.cost.amount).toFixed(2) + " " + String(a.cost.currency ?? ""),
+                "cost",
+              ),
+            );
+          }
+          card.appendChild(top);
+          card.appendChild(
+            textEl(
+              "div",
+              "agent " + String(a.agentId ?? "") + " · task " + String((a.taskId || "").slice(-6)),
+              "meta",
+            ),
+          );
+          card.appendChild(textEl("div", JSON.stringify(a.args ?? {}), "args"));
+          card.appendChild(textEl("div", a.reason, "reason"));
+          const actions = document.createElement("div");
+          actions.className = "actions";
+          const approveBtn = document.createElement("button");
+          approveBtn.className = "approve";
+          approveBtn.dataset.decision = "approved";
+          approveBtn.textContent = "Approve";
+          const rejectBtn = document.createElement("button");
+          rejectBtn.className = "reject";
+          rejectBtn.dataset.decision = "rejected";
+          rejectBtn.textContent = "Reject";
+          actions.appendChild(approveBtn);
+          actions.appendChild(rejectBtn);
+          card.appendChild(actions);
+          root.appendChild(card);
+        }
       }
 
       $("approvals").addEventListener("click", async (e) => {
@@ -1123,22 +1165,14 @@
         const placeholder = feed.querySelector(".empty");
         if (placeholder) placeholder.remove();
         const node = document.createElement("div");
-        const cls = "ev t-" + String(msg.type || "").replace(/\./g, "\\.");
-        node.className = cls;
-        const ts = (msg.ts || "").slice(11, 19);
-        const payload = JSON.stringify(msg.payload);
-        node.innerHTML =
-          "<time>" +
-          esc(ts) +
-          "</time>" +
-          '<span class="type">' +
-          esc(msg.type) +
-          "</span>" +
-          '<span class="payload"><span class="src">' +
-          esc(msg.source || "") +
-          "</span> " +
-          esc(payload) +
-          "</span>";
+        node.className = safeEventTypeClass(msg.type);
+        node.appendChild(textEl("time", (msg.ts || "").slice(11, 19)));
+        node.appendChild(textEl("span", msg.type, "type"));
+        const payloadWrap = document.createElement("span");
+        payloadWrap.className = "payload";
+        payloadWrap.appendChild(textEl("span", msg.source || "", "src"));
+        payloadWrap.appendChild(document.createTextNode(" " + JSON.stringify(msg.payload ?? {})));
+        node.appendChild(payloadWrap);
         feed.insertBefore(node, feed.firstChild);
         while (feed.children.length > MAX_EVENTS) feed.removeChild(feed.lastChild);
       }
@@ -1147,7 +1181,10 @@
         try {
           const s = await fetch("/api/spend").then((r) => r.json());
           const total = Number(s.total || 0).toFixed(2);
-          $("spendBadge").innerHTML = 'spend <span class="spend-total">$' + esc(total) + "</span>";
+          const badge = $("spendBadge");
+          clearEl(badge);
+          badge.appendChild(document.createTextNode("spend "));
+          badge.appendChild(textEl("span", "$" + total, "spend-total"));
         } catch (e) {}
       }
 
@@ -1193,12 +1230,21 @@
         },
       ];
 
-      function setBanner(html, done) {
-        $("demoBanner").innerHTML =
-          '<div class="banner' + (done ? " done" : "") + '">' + html + "</div>";
+      function setBanner(message, done) {
+        const host = $("demoBanner");
+        clearEl(host);
+        const div = document.createElement("div");
+        div.className = "banner" + (done ? " done" : "");
+        if (!done) {
+          const spinner = document.createElement("span");
+          spinner.className = "spinner";
+          div.appendChild(spinner);
+        }
+        div.appendChild(document.createTextNode(message));
+        host.appendChild(div);
       }
       function clearBanner() {
-        $("demoBanner").innerHTML = "";
+        clearEl($("demoBanner"));
       }
 
       async function postTask(t) {
@@ -1225,20 +1271,16 @@
         const live = providerId !== "simulation";
         try {
           setBanner(
-            '<span class="spinner"></span><span>Starting demo — enqueuing <b>' +
+            "Starting demo — enqueuing " +
               DEMO_TASKS.length +
-              " tasks</b> across all agents (" +
-              (live ? "live · " + esc(providerId) : "simulation") +
-              "). Approvals will be auto-resolved.</span>",
+              " tasks across all agents (" +
+              (live ? "live · " + providerId : "simulation") +
+              "). Approvals will be auto-resolved.",
           );
           for (let i = 0; i < DEMO_TASKS.length; i++) {
             await postTask(DEMO_TASKS[i]);
             setBanner(
-              '<span class="spinner"></span><span>Enqueued <b>' +
-                (i + 1) +
-                "/" +
-                DEMO_TASKS.length +
-                "</b> tasks. Watching agents reason…</span>",
+              "Enqueued " + (i + 1) + "/" + DEMO_TASKS.length + " tasks. Watching agents reason…",
             );
             await sleep(900);
           }
@@ -1250,12 +1292,12 @@
             if (pending.length) {
               for (const a of pending) {
                 setBanner(
-                  '<span class="spinner"></span><span>Auto-approving <b>' +
-                    esc(a.tool) +
+                  "Auto-approving " +
+                    String(a.tool ?? "") +
                     (a.cost ? " ($" + Number(a.cost.amount).toFixed(0) + ")" : "") +
-                    "</b> requested by " +
-                    esc(a.agentId) +
-                    "…</span>",
+                    " requested by " +
+                    String(a.agentId ?? "") +
+                    "…",
                 );
                 await sleep(1100);
                 await approve(a.id);
@@ -1264,11 +1306,7 @@
             } else {
               const active = pendingTasks.filter((t) => !TERMINAL.includes(t.state));
               if (active.length === 0) break;
-              setBanner(
-                '<span class="spinner"></span><span>' +
-                  active.length +
-                  " task(s) still in progress…</span>",
-              );
+              setBanner(active.length + " task(s) still in progress…");
             }
             await sleep(900);
           }
@@ -1277,17 +1315,17 @@
             .then((r) => r.json())
             .catch(() => ({ total: 0 }));
           setBanner(
-            '<span style="font-size:1.1em">✓</span><span>Demo complete — <b>' +
+            "Demo complete — " +
               ok +
               "/" +
               DEMO_TASKS.length +
-              "</b> tasks succeeded, <b>$" +
+              " tasks succeeded, $" +
               Number(spend.total || 0).toFixed(2) +
-              "</b> spend recorded. Review the activity feed for the full event trace.</span>",
+              " spend recorded. Review the activity feed for the full event trace.",
             true,
           );
         } catch (e) {
-          setBanner("<span>Demo stopped: " + esc(e.message || e) + "</span>", true);
+          setBanner("Demo stopped: " + String(e.message || e), true);
         } finally {
           demoRunning = false;
           btn.disabled = false;
