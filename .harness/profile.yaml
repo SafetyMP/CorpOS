@@ -21,6 +21,7 @@ requires:
     stop: verify-on-stop
   commands:
     verify: ./scripts/verify.sh
+    integration: null
 bundles_applied:
   - cloud-guards
   - verify-on-stop
@@ -42,6 +43,8 @@ harness_disclosure:
     bundles_applied: []
     verify:
       cmd: ./scripts/verify.sh
+      integration_cmd: null
+      hermetic_stop_only: true
       stop_verify: project-verify-on-stop
       cloud_verify: null
     agents_md_lines: null
