@@ -3,6 +3,10 @@
   "site_id": "corpos",
   "corporate_program": "corpos-autonomous-company-r3",
   "corporate_handoff_sha256": "ae1ffdc303c5a4589a210113d268551c2a6327b6841eb85eeef7bc7a6e6a717d",
-  "verify_argv": ["./scripts/harness/verify.sh"],
-  "adversarial_argv": ["./scripts/harness/adversarial.sh"]
+  "verify_argv": [
+    "./scripts/harness/verify.sh"
+  ],
+  "adversarial_argv": [
+    "./scripts/harness/adversarial.sh"
+  ]
 }
