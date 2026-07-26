@@ -21,7 +21,7 @@ Read the thesis: [`docs/future-of-the-firm.md`](docs/future-of-the-firm.md).
 ## Demo
 
 <p align="center">
-  <img src="docs/assets/demo.gif" alt="CorpOS ops console — capital and trust, company day result, and Governor audit controls (synthetic demo data)" width="900" />
+  <img src="docs/assets/demo.gif" alt="CorpOS ops console — agents hand off a company day (support → finance → ops), trust unlock, and Governor (synthetic demo data)" width="900" />
 </p>
 
 ### Screenshots
@@ -33,7 +33,7 @@ Read the thesis: [`docs/future-of-the-firm.md`](docs/future-of-the-firm.md).
 - **Local demo:** `npm install && npm run build && npm run dev` → [http://localhost:3000](http://localhost:3000)
 - **Regenerate GIF/PNGs:** start the console, then `npm run screenshots` — see [`docs/assets/README.md`](docs/assets/README.md)
 
-Click **Run company day** for the multi-handoff demo (support → finance → ops), including an autonomous settle, an exception approval path, compensation, and trust unlock.
+Click **Run company day** to watch the agent activity timeline: support → finance → ops handoffs, an autonomous settle, an exception approval path, compensation, and trust unlock.
 
 ---
 

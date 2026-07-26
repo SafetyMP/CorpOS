@@ -13,7 +13,7 @@
   "engines": {
     "node": ">=22"
   },
-  "packageManager": "npm@10.9.2",
+  "packageManager": "npm@11.17.0",
   "scripts": {
     "build": "npm run build -w @corpos/core && npm run build -w @corpos/mcp-knowledge && npm run build -w @corpos/api && npm run build -w @corpos/console",
     "typecheck": "npm run typecheck -w @corpos/core && npm run typecheck -w @corpos/mcp-knowledge && npm run typecheck -w @corpos/api && npm run typecheck -w @corpos/console",
@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@corpos/core": "0.2.0",
+    "@hono/node-server": "2.0.11",
     "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
@@ -47,5 +48,17 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.62.0",
     "vitest": "^3.2.4"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true,
+    "fsevents@2.3.3": true,
+    "fsevents@2.3.2": true
+  },
+  "overrides": {
+    "@hono/node-server": "2.0.11",
+    "@modelcontextprotocol/sdk": {
+      "@hono/node-server": "2.0.11"
+    }
   }
 }
