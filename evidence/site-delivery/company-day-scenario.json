@@ -1,0 +1,11 @@
+{
+  "contractId": "ctr_g16siuyoYE",
+  "handoffs": 2,
+  "autonomousSettles": 1,
+  "exceptionSettles": 1,
+  "compensated": 1,
+  "trustAfter": 2,
+  "slaExceptions": 1,
+  "auditHead": "913d51c35e75fe4c148b6f893b2add53975564e8033874f24ce8be8737280e5e",
+  "ok": true
+}

@@ -4,12 +4,16 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/**"
+      - "apps/**"
+      - "packages/**"
+      - "scripts/**"
       - "test/**"
   pull_request:
     branches: [main]
     paths:
-      - "src/**"
+      - "apps/**"
+      - "packages/**"
+      - "scripts/**"
       - "test/**"
   schedule:
     - cron: "27 6 * * 1"
@@ -29,15 +33,15 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@4187e74d05793876e9989daffde9c3e66b4acd07 # v3
         with:
           languages: ${{ matrix.language }}
           queries: +security-and-quality
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@4187e74d05793876e9989daffde9c3e66b4acd07 # v3
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@4187e74d05793876e9989daffde9c3e66b4acd07 # v3
         with:
           category: "/language:${{ matrix.language }}"

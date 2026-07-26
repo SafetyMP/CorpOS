@@ -1,0 +1,23 @@
+{
+  "name": "@corpos/api",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "scenario": "tsx src/index.ts --scenario"
+  },
+  "dependencies": {
+    "@corpos/core": "0.2.0",
+    "@hono/node-server": "^1.14.4",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.32"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.0",
+    "typescript": "^5.8.3"
+  }
+}

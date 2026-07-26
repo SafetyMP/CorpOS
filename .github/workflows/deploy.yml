@@ -1,8 +1,7 @@
 name: Deploy to Fly.io
 
-# Deploys the control plane to Fly.io when a release is published.
-# Requires the FLY_API_TOKEN repo secret (create with: flyctl tokens create deploy -a <app>).
-# Skips automatically if the secret is absent.
+# Optional release deploy for the reference demo. Skips cleanly when
+# FLY_API_TOKEN is unset. Requires fly.toml + Dockerfile.
 on:
   release:
     types: [published]
@@ -16,20 +15,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - name: Abort if Fly token not configured
-        if: ${{ secrets.FLY_API_TOKEN == '' }}
-        run: |
-          echo "FLY_API_TOKEN secret is not set — skipping deploy."
-          echo "Create it with: flyctl tokens create deploy -a <your-app>"
-          exit 0
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
+      - name: Check Fly token
+        id: fly
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -z "${FLY_API_TOKEN}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "FLY_API_TOKEN secret is not set — skipping deploy."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # setup-flyctl only publishes @master (not version tags); pin the commit.
       - name: Set up Flyctl
-        if: ${{ secrets.FLY_API_TOKEN != '' }}
-        uses: superfly/flyctl-actions/setup-flyctl@1.5
+        if: steps.fly.outputs.configured == 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master
 
       - name: Deploy
-        if: ${{ secrets.FLY_API_TOKEN != '' }}
+        if: steps.fly.outputs.configured == 'true'
         run: flyctl deploy --remote-only --strategy=rolling
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

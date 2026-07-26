@@ -1,68 +1,46 @@
 {
   "name": "corpos",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "CorpOS — an autonomous company operating system: a TypeScript multi-agent runtime with a policy, approval, and audit control plane.",
+  "description": "CorpOS — reference implementation of an autonomous company",
   "author": "SafetyMP",
   "license": "Apache-2.0",
   "type": "module",
-  "homepage": "https://github.com/SafetyMP/CorpOS",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/SafetyMP/CorpOS.git"
-  },
-  "bugs": {
-    "url": "https://github.com/SafetyMP/CorpOS/issues"
-  },
-  "keywords": [
-    "multi-agent",
-    "llm",
-    "autonomous-agents",
-    "agent-orchestration",
-    "policy-engine",
-    "approval-workflow",
-    "openrouter",
-    "ai",
-    "control-plane",
-    "typescript"
+  "workspaces": [
+    "packages/*",
+    "apps/*"
   ],
   "engines": {
-    "node": ">=20",
-    "npm": ">=10.9.2 <11"
+    "node": ">=22"
   },
   "packageManager": "npm@10.9.2",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "npm run build -w @corpos/core && npm run build -w @corpos/mcp-knowledge && npm run build -w @corpos/api && npm run build -w @corpos/console",
+    "typecheck": "npm run typecheck -w @corpos/core && npm run typecheck -w @corpos/mcp-knowledge && npm run typecheck -w @corpos/api && npm run typecheck -w @corpos/console",
+    "dev": "npm run dev -w @corpos/api",
+    "start": "npm run start -w @corpos/api",
+    "scenario": "npm run scenario -w @corpos/api",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
-    "scenario": "tsx src/index.ts --scenario",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "audit:verify": "tsx scripts/audit-verify.ts"
   },
   "dependencies": {
-    "better-sqlite3": "^12.11.1",
-    "express": "^5.2.1",
-    "nanoid": "^5.0.7",
-    "ws": "^8.18.0",
-    "zod": "^4.4.3"
+    "@corpos/core": "0.2.0",
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@types/better-sqlite3": "^7.6.11",
-    "@types/express": "^5.0.6",
-    "@types/node": "^26.0.1",
-    "@types/ws": "^8.5.12",
+    "@types/node": "^22.15.30",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.7.0",
     "prettier": "^3.9.3",
     "tsx": "^4.23.0",
-    "typescript": "^6.0.3",
+    "typescript": "^5.8.3",
     "typescript-eslint": "^8.62.0",
-    "vitest": "^4.1.9"
+    "vitest": "^3.2.4"
   }
 }

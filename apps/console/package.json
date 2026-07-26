@@ -1,0 +1,19 @@
+{
+  "name": "@corpos/console",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "preact": "^10.26.9"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.2",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}
