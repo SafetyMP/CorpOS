@@ -26,9 +26,9 @@ jobs:
       - name: Activate packageManager npm
         run: |
           corepack enable
-          corepack prepare npm@10.9.2 --activate
+          corepack prepare npm@11.17.0 --activate
       - name: Site verify (build, typecheck, test, lint, format)
-        run: ./scripts/harness/verify.sh
+        run: CORPOS_VERIFY_CLEAN=1 ./scripts/harness/verify.sh
 
   adversarial:
     runs-on: ubuntu-latest
@@ -43,8 +43,8 @@ jobs:
       - name: Activate packageManager npm
         run: |
           corepack enable
-          corepack prepare npm@10.9.2 --activate
-      - run: npm ci
+          corepack prepare npm@11.17.0 --activate
+      - run: npm ci --include=dev
       - run: npm run build
       - name: Site adversarial
         run: ./scripts/harness/adversarial.sh
