@@ -1,7 +1,6 @@
-# Render Blueprint — one-click deploy of the CorpOS control plane.
-# Click "Deploy to Render" in the README, or: render deploy
-# Runs in simulation mode by default. Live HttpLLMProvider only when
-# OPENROUTER_API_KEY and CORPOS_ALLOW_LIVE=1 are both set.
+# Render Blueprint — optional deploy of the CorpOS control plane (`render deploy`).
+# Runs in simulation mode by default. Live *health reporting* only when
+# OPENROUTER_API_KEY and CORPOS_ALLOW_LIVE=1 are both set (agents stay simulated).
 services:
   - type: web
     name: corpos
@@ -15,5 +14,4 @@ services:
         value: production
       - key: LOG_LEVEL
         value: info
-      # OPENROUTER_API_KEY + CORPOS_ALLOW_LIVE=1 required for live mode
-      # OPENROUTER_MODEL: optional model slug
+      # OPENROUTER_API_KEY + CORPOS_ALLOW_LIVE=1 for health mode=live only

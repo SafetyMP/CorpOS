@@ -29,21 +29,25 @@ Please also follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 ```bash
 npm ci --include=dev
 npm run build
-./scripts/harness/verify.sh   # build · typecheck · test · lint · format · stack guards
+./scripts/harness/verify.sh      # build · typecheck · test · lint · format · stack guards
+./scripts/harness/adversarial.sh # authorized local adversarial probes
 # Force a clean reinstall (CI does this): CORPOS_VERIFY_CLEAN=1 ./scripts/harness/verify.sh
 ```
 
 A contribution is not finished until `./scripts/harness/verify.sh` is green
-locally. CI runs the same gate on every pull request.
+locally. CI runs **verify and adversarial** on every pull request to `main`.
 
 Useful commands:
 
 ```bash
 npm run dev            # ops console on $PORT or 3000
 npm test
-npm run scenario
+npm run scenario       # HITL default-off; exits non-zero unless exception is auto-settled
 npm run audit:verify
 ```
+
+Headless company-day settles that must exit 0 need `autoApproveException: true`
+(used in tests). Product demos and the ops console keep it `false`.
 
 ## Architecture rules (must respect)
 
@@ -59,8 +63,8 @@ npm run audit:verify
 ## Decisions
 
 Non-trivial architectural decisions are recorded as ADRs in
-[`docs/adr/`](docs/adr/). If your change introduces or reverses a decision, add
-or update an ADR.
+[`docs/adr/README.md`](docs/adr/README.md). If your change introduces or reverses
+a decision, add or update an ADR.
 
 ## Screenshots
 
@@ -87,6 +91,7 @@ npm run screenshots              # see docs/assets/README.md
 | **CodeQL**            | [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml)       |
 | **Dependabot**        | [`.github/dependabot.yml`](.github/dependabot.yml)                   |
 | **Local verify**      | `./scripts/harness/verify.sh`                                        |
+| **Local adversarial** | `./scripts/harness/adversarial.sh`                                   |
 
 ## License
 

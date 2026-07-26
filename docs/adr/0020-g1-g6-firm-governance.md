@@ -12,3 +12,6 @@ Accepted (corpos-autonomous-company-r3)
 - **G6** one-shot appeal for rejected/TTL-expired exceptions
 
 Agents expose `approverRoles` for quorum membership.
+
+## Consequences
+Bound by site harness verify/adversarial gates. Public docs must not claim coverage beyond what the tree implements.

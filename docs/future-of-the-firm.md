@@ -13,7 +13,7 @@ CorpOS is a **reference implementation of an autonomous company**. The thesis:
 
 Interop protocols (MCP, optional A2A later) are **transport**. They do not encode community governance — CorpOS does.
 
-Humans govern **by exception** in the ops console (Approve / Reject / Kill). Autonomy is **earned** from evidence (trust ledger), not granted in prompts.
+Humans govern **by exception** in the ops console (Approve / Reject / Kill). Autonomy is **earned** from evidence (trust ledger), not granted in prompts. Company-day demos keep `autoApproveException` off unless a test/CI caller opts in.
 
 ## 20-minute path
 
