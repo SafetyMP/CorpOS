@@ -10,37 +10,41 @@ permissions:
   contents: read
 
 jobs:
-  lint:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: ESLint
-        run: npm run lint
-      - name: Prettier check
-        run: npm run format:check
-
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         node-version: [22, 24]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+      - name: Activate packageManager npm
+        run: |
+          corepack enable
+          corepack prepare npm@10.9.2 --activate
+      - name: Site verify (build, typecheck, test, lint, format)
+        run: ./scripts/harness/verify.sh
+
+  adversarial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: verify
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Activate packageManager npm
+        run: |
+          corepack enable
+          corepack prepare npm@10.9.2 --activate
       - run: npm ci
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Test
-        run: npm test
+      - run: npm run build
+      - name: Site adversarial
+        run: ./scripts/harness/adversarial.sh
