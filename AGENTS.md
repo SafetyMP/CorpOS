@@ -1,46 +1,18 @@
-# AGENTS.md
+# Site contract
 
-CorpOS harness. Profile: **solo**.
+## Gates
 
-## Purpose
+| Command                            | Purpose                             |
+| ---------------------------------- | ----------------------------------- |
+| `./scripts/harness/verify.sh`      | Functional and static acceptance    |
+| `./scripts/harness/adversarial.sh` | Authorized local adversarial probes |
 
-TypeScript multi-agent runtime with policy, approval, and audit control plane. Simulation-first demo; optional live LLM via OpenRouter.
+Record `verification_scripts` as the site directory `scripts/harness` (exactly those
+two scripts). Optional wrappers may remain at `scripts/verify.sh` /
+`scripts/adversarial.sh` for humans; they are outside the digest boundary.
 
-## Prerequisites
+The corporate handoff fixes scope. The site manager assigns ADRs; site specialists write;
+operations excellence reviews current evidence. Work in isolated roots, never edit
+corporate approval state, and never self-approve.
 
-- Node.js ≥20 (`package.json` engines)
-- `npm install` (builds `better-sqlite3` native module)
-
-## Commands
-
-| Command               | Purpose                         |
-| --------------------- | ------------------------------- |
-| `./scripts/verify.sh` | Definition of Done              |
-| `npm install`         | Install dependencies            |
-| `npm run dev`         | API + dashboard with hot reload |
-| `npm run start`       | Run without watch               |
-| `npm run test`        | Vitest suite                    |
-| `npm run typecheck`   | `tsc --noEmit`                  |
-| `npm run lint`        | ESLint                          |
-| `npm run build`       | Compile to `dist/`              |
-
-## Layout
-
-| Path             | Role                                                      |
-| ---------------- | --------------------------------------------------------- |
-| `src/core/`      | Orchestrator, policy, store (SQLite at `data/company.db`) |
-| `src/agents/`    | Department agents                                         |
-| `src/tools/`     | Permissioned tool registry                                |
-| `src/api/`       | Express REST + WebSocket                                  |
-| `src/dashboard/` | Control-plane UI                                          |
-
-## Definition of Done
-
-```bash
-npx npm@10.9.2 ci
-./scripts/verify.sh
-```
-
-## Review focus
-
-Block on P0/P1: policy chokepoint bypass, approval gate skips, secret exposure, broken simulation determinism.
+Site id: `corpos`. Prior Cursor Harness v4 is under `_archives/harness-v4/`.

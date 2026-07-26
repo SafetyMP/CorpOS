@@ -1,0 +1,24 @@
+{
+  "schema": "harness-v4-archive/v1",
+  "site_id": "corpos",
+  "local_path": "/Users/sagehart/Downloads/CorpOS",
+  "utc": "20260717T192824Z",
+  "archived": [
+    {
+      "path": ".harness",
+      "sha256": "a4fabbd97142617b2b2c18b0ef8fcd6ca7c03b488844a665b60c29663af878b5"
+    },
+    {
+      "path": ".cursor/hooks.json",
+      "sha256": "422b14c73cfc16070d411d5a41c55df66a9753530aa172bac19f1eb30b602f0b"
+    },
+    {
+      "path": ".cursor/hooks",
+      "sha256": "4b9f81919d4742a27e331a9fc2ac1b59aeb57028bb0002a42deed97471b1e776"
+    },
+    {
+      "path": "AGENTS.md.pre-corp-site",
+      "sha256": "7cf637571054f8a13be231ab11f79d985eeef7cefa92e0ed2938e8231b37e400"
+    }
+  ]
+}
