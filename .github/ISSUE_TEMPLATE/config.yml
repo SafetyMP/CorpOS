@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/SafetyMP/CorpOS/security/advisories/new
+    about: Report privately via GitHub Security Advisories — never post undisclosed vulnerabilities as public issues.
+  - name: Contributing guide
+    url: https://github.com/SafetyMP/CorpOS/blob/main/CONTRIBUTING.md
+    about: Local setup, harness verify, and pull request expectations.
+  - name: Thesis / product intent
+    url: https://github.com/SafetyMP/CorpOS/blob/main/docs/future-of-the-firm.md
+    about: Why CorpOS models an autonomous company and how humans govern by exception.
