@@ -27,8 +27,8 @@ Treat it as a design artifact you can run locally.
 ## Shared demo
 
 When `CORPOS_MODE=shared`, `DASHBOARD_API_TOKEN` is required as a **Bearer**
-token on API approve and kill mutations. The ops console does not yet attach
-that header — use a Bearer-capable client for shared-mode HITL. This is a
+token on API approve and kill mutations. The ops console sends
+`VITE_DASHBOARD_API_TOKEN` when configured. This is a
 static token compare for demos, not an OAuth flow.
 
 ## Dependency / supply-chain hygiene
