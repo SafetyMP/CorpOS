@@ -9,6 +9,8 @@ cd "$ROOT"
 LOCK_DIR="${ROOT}/.corp-harness/verify.lock"
 LOCK_WAIT_SECONDS="${CORPOS_VERIFY_LOCK_WAIT_SECONDS:-600}"
 VERIFY_LOCK_HELD=""
+# Populated by resolve_npm — prefer `corepack npm` so setup-node's npm 10 is not used.
+NPM=(npm)
 
 cleanup_lock() {
   if [[ -n "${VERIFY_LOCK_HELD}" ]]; then
@@ -32,41 +34,48 @@ acquire_lock() {
   VERIFY_LOCK_HELD=1
 }
 
-activate_package_manager() {
-  # Prefer Corepack pin from package.json; never npx-fetch npm at verify time.
+resolve_npm() {
+  # GitHub setup-node ships npm 10 as a real binary; corepack prepare does not
+  # replace it on PATH. Always invoke the pin through `corepack npm` when present.
   if command -v corepack >/dev/null 2>&1; then
-    corepack enable >/dev/null 2>&1 || true
-    corepack prepare npm@11.17.0 --activate >/dev/null 2>&1 || true
-  fi
-  if ! command -v npm >/dev/null 2>&1; then
-    echo "verify: npm not on PATH" >&2
+    corepack enable
+    corepack prepare npm@11.17.0 --activate
+    NPM=(corepack npm)
+  elif command -v npm >/dev/null 2>&1; then
+    NPM=(npm)
+  else
+    echo "verify: npm/corepack not on PATH" >&2
     exit 1
   fi
-  local major
-  major="$(npm -v | cut -d. -f1)"
+  local ver major
+  ver="$("${NPM[@]}" -v)"
+  major="$(printf '%s' "${ver}" | cut -d. -f1)"
   if (( major < 11 )); then
-    echo "verify: npm $(npm -v) is too old; need >= 11.16 for allowScripts / strict-allow-scripts" >&2
-    echo "verify: enable Corepack and retry (packageManager npm@11.17.0)" >&2
+    echo "verify: npm ${ver} is too old; need >= 11.16 for allowScripts / strict-allow-scripts" >&2
+    echo "verify: enable Corepack (packageManager npm@11.17.0) and retry" >&2
     exit 1
   fi
+  echo "verify: using npm ${ver} via ${NPM[*]}"
 }
 
 clean_install_tree() {
   echo "==> clean node_modules"
   rm -rf "${ROOT}/node_modules"
+  shopt -s nullglob
   local d
   for d in "${ROOT}/apps"/*/node_modules "${ROOT}/packages"/*/node_modules; do
-    [[ -d "${d}" ]] && rm -rf "${d}"
+    rm -rf "${d}"
   done
+  shopt -u nullglob
 }
 
 install_deps() {
   echo "==> npm ci (lockfile + devDependencies)"
   # Host NODE_ENV=production would omit typescript/vitest/eslint.
-  if ! env -u NODE_ENV npm ci --include=dev; then
+  if ! env -u NODE_ENV "${NPM[@]}" ci --include=dev; then
     echo "verify: npm ci failed; cleaning tree and retrying once" >&2
     clean_install_tree
-    env -u NODE_ENV npm ci --include=dev
+    env -u NODE_ENV "${NPM[@]}" ci --include=dev
   fi
 }
 
@@ -115,14 +124,16 @@ PY
 
 check_allow_scripts() {
   # Fail if any install-script package is outside package.json allowScripts.
-  if ! npm approve-scripts --allow-scripts-pending --json >/tmp/corpos-allow-scripts.json 2>/tmp/corpos-allow-scripts.err; then
-    # Older npm 11 builds may lack --json; fall back to text.
-    if ! npm approve-scripts --allow-scripts-pending >/tmp/corpos-allow-scripts.txt 2>/tmp/corpos-allow-scripts.err; then
+  if ! "${NPM[@]}" approve-scripts --allow-scripts-pending --json >/tmp/corpos-allow-scripts.json 2>/tmp/corpos-allow-scripts.err; then
+    if ! "${NPM[@]}" approve-scripts --allow-scripts-pending >/tmp/corpos-allow-scripts.txt 2>/tmp/corpos-allow-scripts.err; then
       cat /tmp/corpos-allow-scripts.err >&2 || true
       echo "verify: npm approve-scripts failed (is npm >= 11.16?)" >&2
       exit 1
     fi
-    if rg -q '[^[:space:]]' /tmp/corpos-allow-scripts.txt && ! rg -qi 'no packages|0 packages|nothing pending|all scripts' /tmp/corpos-allow-scripts.txt; then
+    if grep -Eiq 'No packages with unreviewed' /tmp/corpos-allow-scripts.txt; then
+      return 0
+    fi
+    if grep -Eq '[[:alnum:]]' /tmp/corpos-allow-scripts.txt; then
       echo "verify: pending install scripts not covered by allowScripts:" >&2
       cat /tmp/corpos-allow-scripts.txt >&2
       exit 1
@@ -158,7 +169,7 @@ if [[ -x ./scripts/check-stub-canary.sh ]]; then
 fi
 
 acquire_lock
-activate_package_manager
+resolve_npm
 
 if [[ "${CORPOS_VERIFY_CLEAN:-}" == "1" ]]; then
   clean_install_tree
@@ -166,7 +177,6 @@ if [[ "${CORPOS_VERIFY_CLEAN:-}" == "1" ]]; then
 elif [[ ! -f "${ROOT}/node_modules/typescript/bin/tsc" ]]; then
   install_deps
 elif [[ ! -e "${ROOT}/node_modules/.bin/tsc" ]]; then
-  # Partial tree — repair via reinstall rather than hoping symlinks alone suffice.
   install_deps
 else
   echo "==> reuse node_modules (set CORPOS_VERIFY_CLEAN=1 to force npm ci)"
@@ -177,38 +187,39 @@ check_typescript_lock_bind
 check_allow_scripts
 
 echo "==> build"
-npm run build
+"${NPM[@]}" run build
 
 echo "==> typecheck + test + lint + format"
-npm run typecheck
-npm run test
-npm run lint
-npm run format:check
+"${NPM[@]}" run typecheck
+"${NPM[@]}" run test
+"${NPM[@]}" run lint
+"${NPM[@]}" run format:check
 
-# Stack guardrails
-if rg -n "from ['\"]express['\"]|require\\(['\"]express['\"]\\)" apps packages --glob '!**/node_modules/**' >/dev/null 2>&1; then
+# Stack guardrails (grep — rg is not on GitHub-hosted runners by default)
+if grep -REn "from ['\"]express['\"]|require\\(['\"]express['\"]\\)" apps packages \
+  --exclude-dir=node_modules --exclude-dir=dist >/dev/null 2>&1; then
   echo "verify: Express import forbidden" >&2
   exit 1
 fi
-if rg -n "better-sqlite3" package.json packages/*/package.json apps/*/package.json >/dev/null 2>&1; then
+if grep -En "better-sqlite3" package.json packages/*/package.json apps/*/package.json >/dev/null 2>&1; then
   echo "verify: better-sqlite3 forbidden" >&2
   exit 1
 fi
 
 echo "==> pedagogy (slate console, timeline, demo.gif)"
-if ! rg -q -- '--accent: #2f8f9a' apps/console/src/styles.css; then
+if ! grep -Fq -- '--accent: #2f8f9a' apps/console/src/styles.css; then
   echo "verify: expected restrained teal accent in console styles" >&2
   exit 1
 fi
-if rg -q -- '--accent: #c4f542' apps/console/src/styles.css; then
+if grep -Fq -- '--accent: #c4f542' apps/console/src/styles.css; then
   echo "verify: neon lime accent forbidden" >&2
   exit 1
 fi
-if ! rg -q 'data-company-day|class="timeline"|data-timeline-kind' apps/console/src/main.tsx; then
+if ! grep -Eq 'data-company-day|class="timeline"|data-timeline-kind' apps/console/src/main.tsx; then
   echo "verify: company-day activity timeline missing from console" >&2
   exit 1
 fi
-if rg -q 'JSON\.stringify\(day' apps/console/src/main.tsx; then
+if grep -Eq 'JSON\.stringify\(day' apps/console/src/main.tsx; then
   echo "verify: raw JSON dump must not be primary company-day surface" >&2
   exit 1
 fi
@@ -216,11 +227,12 @@ if [[ ! -f docs/assets/demo.gif ]]; then
   echo "verify: docs/assets/demo.gif missing" >&2
   exit 1
 fi
-if ! rg -q '"screenshots"' package.json; then
+if ! grep -Fq '"screenshots"' package.json; then
   echo "verify: npm run screenshots script missing" >&2
   exit 1
 fi
-if [[ ! -f docs/future-of-the-firm.md ]] || ! rg -qi 'timeline|Run company day' docs/future-of-the-firm.md README.md; then
+if [[ ! -f docs/future-of-the-firm.md ]] \
+  || ! grep -Eiq 'timeline|Run company day' docs/future-of-the-firm.md README.md; then
   echo "verify: pedagogy docs must mention company day / timeline" >&2
   exit 1
 fi

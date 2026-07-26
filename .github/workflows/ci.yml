@@ -27,6 +27,8 @@ jobs:
         run: |
           corepack enable
           corepack prepare npm@11.17.0 --activate
+          # setup-node's npm 10 stays on PATH; assert the pin via corepack npm.
+          test "$(corepack npm -v | cut -d. -f1)" -ge 11
       - name: Site verify (build, typecheck, test, lint, format)
         run: CORPOS_VERIFY_CLEAN=1 ./scripts/harness/verify.sh
 
@@ -44,7 +46,8 @@ jobs:
         run: |
           corepack enable
           corepack prepare npm@11.17.0 --activate
-      - run: npm ci --include=dev
-      - run: npm run build
+          test "$(corepack npm -v | cut -d. -f1)" -ge 11
+      - run: corepack npm ci --include=dev
+      - run: corepack npm run build
       - name: Site adversarial
         run: ./scripts/harness/adversarial.sh
