@@ -1,13 +1,9 @@
-# ADR-17: Governance PDP/PEP
+# ADR-17: Governance PDP/PEP enforcement modes (r3 amendment)
 
 ## Status
-Accepted (corpos-autonomous-company-r2)
-
-## Context
-July 2026 autonomous-company reference revision.
+Accepted (corpos-autonomous-company-r3)
 
 ## Decision
-Implement Governance PDP/PEP as specified in corporate master-spec ADR-17.
-
-## Consequences
-Bound by site harness verify/adversarial gates.
+Runtime enforcement via `CORPOS_ENFORCEMENT` and `POST /api/governance/enforcement`
+(`strict`|`audit`). Audit mode logs would-deny; never silent fail-open.
+Rego-shaped isomorphic TS PDP — no OPA sidecar required.

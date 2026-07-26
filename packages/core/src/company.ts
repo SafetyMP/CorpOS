@@ -13,12 +13,15 @@ import {
   tasks,
   exceptions,
   traces,
+  deliberationEntries,
+  transparencyRecords,
 } from "./schema.js";
 import { newId } from "./id.js";
 import { now, type ChatMessage, type LLMProvider, type ToolResult } from "./types.js";
 import type { Client } from "@libsql/client";
-import { endSpan, startSpan } from "./otel.js";
+import { endSpan, startSpan, currentTraceId } from "./otel.js";
 import { Orchestrator } from "./orchestrator.js";
+import { publishFirmEvent } from "./events.js";
 
 export interface Company {
   client: Client;
@@ -93,6 +96,7 @@ async function seedFirm(db: Db): Promise<void> {
       rejects: 0,
       violations: 0,
       active: 1,
+      approverRoles: JSON.stringify(["approver"]),
     },
     {
       id: "agent_finance",
@@ -106,6 +110,7 @@ async function seedFirm(db: Db): Promise<void> {
       rejects: 0,
       violations: 0,
       active: 1,
+      approverRoles: JSON.stringify(["approver"]),
     },
     {
       id: "agent_ops",
@@ -119,6 +124,7 @@ async function seedFirm(db: Db): Promise<void> {
       rejects: 0,
       violations: 0,
       active: 1,
+      approverRoles: JSON.stringify(["approver", "owner"]),
     },
   ];
   for (const a of agentRows) {
@@ -329,15 +335,83 @@ export async function openContract(
   return { contractId, taskId };
 }
 
+export async function appendDeliberation(
+  company: Company,
+  exceptionId: string,
+  kind: string,
+  by: string,
+  body: string,
+): Promise<void> {
+  await company.db.insert(deliberationEntries).values({
+    id: newId("del"),
+    exceptionId,
+    kind,
+    by,
+    body,
+    createdAt: now(),
+  });
+}
+
+export async function recordTransparency(
+  company: Company,
+  opts: {
+    decisionId: string;
+    kind: string;
+    summary: string;
+    payload?: Record<string, unknown>;
+    traceId?: string;
+  },
+): Promise<void> {
+  await company.db.insert(transparencyRecords).values({
+    id: newId("trp"),
+    decisionId: opts.decisionId,
+    traceId: opts.traceId ?? currentTraceId(),
+    kind: opts.kind,
+    summary: opts.summary,
+    payloadJson: JSON.stringify(opts.payload ?? {}),
+    createdAt: now(),
+  });
+}
+
 export async function decideException(
   company: Company,
   exceptionId: string,
   decision: "approved" | "rejected",
   by: string,
   dissentReason?: string,
-): Promise<{ resumed?: boolean; executed?: boolean }> {
+): Promise<{ resumed?: boolean; executed?: boolean; quorumPending?: boolean; votes?: number }> {
   const ex = (await company.db.select().from(exceptions).where(eq(exceptions.id, exceptionId)))[0];
   if (!ex || ex.state !== "pending") return {};
+
+  await appendDeliberation(
+    company,
+    exceptionId,
+    decision === "approved" ? "vote_approve" : "vote_reject",
+    by,
+    dissentReason ?? decision,
+  );
+
+  const quorum = company.policy.getQuorumConfig(ex.riskLevel);
+  if (decision === "approved" && quorum) {
+    const votes = JSON.parse(ex.votesJson || "[]") as Array<{ by: string; at: string }>;
+    if (!votes.some((v) => v.by === by)) {
+      votes.push({ by, at: now() });
+    }
+    await company.db
+      .update(exceptions)
+      .set({ votesJson: JSON.stringify(votes) })
+      .where(eq(exceptions.id, exceptionId));
+    if (votes.length < quorum.n) {
+      await company.audit.append("exception.quorum_vote", {
+        exceptionId,
+        by,
+        votes: votes.length,
+        need: quorum.n,
+      });
+      return { quorumPending: true, votes: votes.length };
+    }
+  }
+
   const patch: Record<string, unknown> = {
     state: decision,
     decidedAt: now(),
@@ -349,11 +423,21 @@ export async function decideException(
   await company.db.update(exceptions).set(patch).where(eq(exceptions.id, exceptionId));
   if (decision === "approved") await company.trust.recordAccept(ex.agentId);
   else await company.trust.recordReject(ex.agentId);
+  const decisionId = newId("dec");
   await company.audit.append(`exception.${decision}`, {
     exceptionId,
     by,
     dissentReason: dissentReason ?? null,
+    decisionId,
+    traceId: currentTraceId(),
   });
+  await recordTransparency(company, {
+    decisionId,
+    kind: `exception.${decision}`,
+    summary: `${decision} ${ex.tool} by ${by}`,
+    payload: { exceptionId, riskLevel: ex.riskLevel },
+  });
+  publishFirmEvent(`exception.${decision}`, { exceptionId, by });
 
   if (decision === "approved" && ex.pauseJson) {
     const tool = company.gateway.get(ex.tool);
@@ -382,6 +466,50 @@ export async function decideException(
     return { resumed: true, executed: false };
   }
   return {};
+}
+
+/** G6: one-shot appeal of rejected/TTL-expired exception to higher authority. */
+export async function appealException(
+  company: Company,
+  exceptionId: string,
+  by: string,
+  reason: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const ex = (await company.db.select().from(exceptions).where(eq(exceptions.id, exceptionId)))[0];
+  if (!ex) return { ok: false, error: "not found" };
+  if (ex.state !== "rejected") return { ok: false, error: "only rejected/TTL exceptions appeal" };
+  if (ex.appealUsed) return { ok: false, error: "appeal already used" };
+  await company.db
+    .update(exceptions)
+    .set({
+      state: "pending",
+      appealUsed: 1,
+      appealedAt: now(),
+      decidedAt: null,
+      decidedBy: null,
+      dissentReason: null,
+    })
+    .where(eq(exceptions.id, exceptionId));
+  await appendDeliberation(company, exceptionId, "appeal", by, reason);
+  await company.audit.append("exception.appealed", { exceptionId, by, reason });
+  await recordTransparency(company, {
+    decisionId: newId("dec"),
+    kind: "exception.appealed",
+    summary: `Appeal by ${by}`,
+    payload: { exceptionId, reason },
+  });
+  return { ok: true };
+}
+
+export async function expireExceptionTtl(company: Company): Promise<number> {
+  const { count, expiredIds } = await company.policy.expireTtl();
+  for (const id of expiredIds) {
+    const e = (await company.db.select().from(exceptions).where(eq(exceptions.id, id)))[0];
+    if (!e) continue;
+    company.orchestrator?.resume(e.taskId, false);
+    await appendDeliberation(company, e.id, "ttl_expire", "ttl", "TTL expired fail-closed");
+  }
+  return count;
 }
 
 export async function checkSlaBreaches(company: Company): Promise<number> {

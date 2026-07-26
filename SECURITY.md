@@ -9,7 +9,9 @@ Treat it as a design artifact you can run locally.
 
 - ToolGateway is the sole chokepoint for consequential tools.
 - Unknown tools fail closed.
-- Exception HITL with TTL; kill switch; department capital caps.
+- Exception HITL with scheduled TTL fail-closed; kill switch; department capital caps.
+- Shared-mode console sends Bearer (`VITE_DASHBOARD_API_TOKEN` / `DASHBOARD_API_TOKEN`).
+- G3 quorum, G6 appeal, and enforcement `strict`/`audit` modes.
 - Hash-chained audit receipts (`npm run audit:verify`).
 
 ## Not provided

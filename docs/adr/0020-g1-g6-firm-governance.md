@@ -1,13 +1,14 @@
-# ADR-20: G1-G6 firm governance
+# ADR-20: G1–G6 firm governance (r3 amendment)
 
 ## Status
-Accepted (corpos-autonomous-company-r2)
-
-## Context
-July 2026 autonomous-company reference revision.
+Accepted (corpos-autonomous-company-r3)
 
 ## Decision
-Implement G1-G6 firm governance as specified in corporate master-spec ADR-20.
+- **G1** membership / `active`
+- **G2** append-only deliberation trail
+- **G3** configurable N-of-M quorum for L4+ (vitest required)
+- **G4** dissent on reject
+- **G5** transparency records (`decision_id` + `trace_id`) on Governor
+- **G6** one-shot appeal for rejected/TTL-expired exceptions
 
-## Consequences
-Bound by site harness verify/adversarial gates.
+Agents expose `approverRoles` for quorum membership.

@@ -15,3 +15,5 @@ export * from "./mcp-client.js";
 export * from "./authz.js";
 export * from "./otel.js";
 export * from "./orchestrator.js";
+export * from "./events.js";
+export * from "./elicitation.js";

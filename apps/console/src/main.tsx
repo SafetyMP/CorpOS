@@ -62,6 +62,14 @@ type Governance = {
 
 const REVEAL_MS = 500;
 
+function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const token = (import.meta as { env?: { VITE_DASHBOARD_API_TOKEN?: string } }).env
+    ?.VITE_DASHBOARD_API_TOKEN;
+  const headers: Record<string, string> = { ...extra };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
 function App() {
   const [firm, setFirm] = useState<Firm | null>(null);
   const [exceptions, setExceptions] = useState<Exception[]>([]);
@@ -72,6 +80,7 @@ function App() {
   const [running, setRunning] = useState(false);
   const [tab, setTab] = useState<"ops" | "governor">("ops");
   const [dissent, setDissent] = useState("");
+  const [liveTimeline, setLiveTimeline] = useState<TimelineEvent[]>([]);
 
   const refresh = async () => {
     const f = await fetch("/api/firm").then((r) => r.json());
@@ -86,6 +95,27 @@ function App() {
 
   useEffect(() => {
     void refresh();
+  }, []);
+
+  useEffect(() => {
+    const es = new EventSource("/api/events");
+    es.onmessage = (msg) => {
+      try {
+        const data = JSON.parse(msg.data) as {
+          type?: string;
+          payload?: TimelineEvent;
+          kind?: string;
+        };
+        if (data.type === "timeline" && data.payload) {
+          setLiveTimeline((prev) => [...prev, data.payload as TimelineEvent]);
+        } else if (data.kind && (data as unknown as TimelineEvent).summary) {
+          setLiveTimeline((prev) => [...prev, data as unknown as TimelineEvent]);
+        }
+      } catch {
+        /* ignore heartbeat/parse */
+      }
+    };
+    return () => es.close();
   }, []);
 
   useEffect(() => {
@@ -109,10 +139,11 @@ function App() {
     setRunning(true);
     setDay(null);
     setVisibleCount(0);
+    setLiveTimeline([]);
     try {
       const r = (await fetch("/api/company-day", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: authHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ autoApproveException: false }),
       }).then((res) => res.json())) as CompanyDay;
       setDay(r);
@@ -125,7 +156,7 @@ function App() {
   const decide = async (id: string, decision: "approved" | "rejected") => {
     await fetch(`/api/exceptions/${id}/decide`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: authHeaders({ "content-type": "application/json" }),
       body: JSON.stringify({
         decision,
         by: "operator@console",
@@ -141,7 +172,7 @@ function App() {
     if (next && !window.confirm("Engage kill switch? All tool invokes will deny.")) return;
     await fetch("/api/kill", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: authHeaders({ "content-type": "application/json" }),
       body: JSON.stringify({ killed: next }),
     });
     await refresh();
@@ -256,29 +287,31 @@ function App() {
             data-timeline-visible={String(visibleCount)}
           >
             <h2>Company day</h2>
-            {!day ? (
+            {!day && liveTimeline.length === 0 ? (
               <p class="muted">Not run yet — watch agents hand off work across the firm.</p>
             ) : (
               <>
-                <div class="metrics" data-testid="day-metrics">
-                  <span>
-                    Handoffs <strong>{day.handoffs}</strong>
-                  </span>
-                  <span>
-                    Autonomous <strong>{day.autonomousSettles}</strong>
-                  </span>
-                  <span>
-                    Exceptions <strong>{day.exceptionSettles}</strong>
-                  </span>
-                  <span>
-                    Trust <strong>{day.trustAfter}</strong>
-                  </span>
-                  <span>
-                    Status <strong>{day.ok ? "ok" : "incomplete"}</strong>
-                  </span>
-                </div>
+                {day ? (
+                  <div class="metrics" data-testid="day-metrics">
+                    <span>
+                      Handoffs <strong>{day.handoffs}</strong>
+                    </span>
+                    <span>
+                      Autonomous <strong>{day.autonomousSettles}</strong>
+                    </span>
+                    <span>
+                      Exceptions <strong>{day.exceptionSettles}</strong>
+                    </span>
+                    <span>
+                      Trust <strong>{day.trustAfter}</strong>
+                    </span>
+                    <span>
+                      Status <strong>{day.ok ? "ok" : "incomplete"}</strong>
+                    </span>
+                  </div>
+                ) : null}
                 <ol class="timeline" aria-live="polite">
-                  {day.timeline.slice(0, visibleCount).map((evt) => (
+                  {(day ? day.timeline.slice(0, visibleCount) : liveTimeline).map((evt) => (
                     <li key={evt.id} data-timeline-id={evt.id} data-timeline-kind={evt.kind}>
                       <div class="role">{evt.role}</div>
                       <div>

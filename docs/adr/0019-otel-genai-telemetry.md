@@ -1,13 +1,8 @@
-# ADR-19: OTel GenAI telemetry
+# ADR-19: OTel GenAI + OTLP (r3 amendment)
 
 ## Status
-Accepted (corpos-autonomous-company-r2)
-
-## Context
-July 2026 autonomous-company reference revision.
+Accepted (corpos-autonomous-company-r3)
 
 ## Decision
-Implement OTel GenAI telemetry as specified in corporate master-spec ADR-19.
-
-## Consequences
-Bound by site harness verify/adversarial gates.
+In-memory GenAI spans remain CI default. Optional OTLP/HTTP export when
+`CORPOS_OTLP_ENDPOINT` is set. Spans and audit rows carry `trace_id` / `decision_id`.

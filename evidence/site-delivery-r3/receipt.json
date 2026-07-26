@@ -1,0 +1,90 @@
+{
+  "schema": "corpos-site-delivery-receipt/v1",
+  "program_id": "corpos-autonomous-company-r3",
+  "site_id": "corpos",
+  "recorded_at": "2026-07-26T14:00:45.887088+00:00",
+  "captured_at": "2026-07-26T14:00:45.887274+00:00",
+  "verify": "PASS",
+  "adversarial": "PASS",
+  "verification_scripts": "scripts/harness",
+  "verify_argv": ["./scripts/harness/verify.sh"],
+  "adversarial_argv": ["./scripts/harness/adversarial.sh"],
+  "verification_scripts_sha256": "b39d27e919a93150cbb9ba124e1c803737f9261b0818f10e9b4b06594b7bc9b2",
+  "harness_file_sha256": {
+    "adversarial-run.mjs": "3438da18530a0a6de798566eacd97a08456054edbedb026a0563e6475cae66fd",
+    "adversarial.sh": "c5c40ecb99ba3c5322d036ed7c6838a6f969e343003f5da3148a17288cb11d52",
+    "check-stub-canary.sh": "7bf1f3ceda1fa7e5f5feee2da0bbc17597c457ffa8b491801162ed8d05e59db5",
+    "verify.sh": "688518e9a148710768bb565525cac41c78a4092208069b6fea08825ed1483df8"
+  },
+  "company_day": {
+    "contractId": "ctr_0i1HowOSDt",
+    "handoffs": 2,
+    "autonomousSettles": 1,
+    "exceptionSettles": 0,
+    "compensated": 1,
+    "trustAfter": 1,
+    "slaExceptions": 1,
+    "auditHead": "32812ead4084827398b0c189253aa3453e55fe492767e9ecaae4f8ee99099724",
+    "ok": false,
+    "timeline": [
+      {
+        "id": "evt_1",
+        "agentId": "agent_support",
+        "role": "Support",
+        "kind": "intake",
+        "summary": "Opened refund contract for ada@example.com ($49)."
+      },
+      {
+        "id": "evt_2",
+        "agentId": "agent_support",
+        "role": "Support",
+        "kind": "handoff",
+        "summary": "Handed refund obligation to Finance."
+      },
+      {
+        "id": "evt_3",
+        "agentId": "agent_support",
+        "role": "Support",
+        "kind": "trust",
+        "summary": "Clean handoff raised Support trust (earned autonomy)."
+      },
+      {
+        "id": "evt_4",
+        "agentId": "agent_finance",
+        "role": "Finance",
+        "kind": "autonomous_settle",
+        "summary": "Autonomously settled $49 refund (earned risk budget)."
+      },
+      {
+        "id": "evt_5",
+        "agentId": "agent_finance",
+        "role": "Finance",
+        "kind": "handoff",
+        "summary": "Handed post-refund health check to Ops."
+      },
+      {
+        "id": "evt_6",
+        "agentId": "agent_ops",
+        "role": "Ops",
+        "kind": "exception",
+        "summary": "Restart requires human approval \u2014 exception queued."
+      },
+      {
+        "id": "evt_7",
+        "agentId": "agent_finance",
+        "role": "Finance",
+        "kind": "compensate",
+        "summary": "Compensated 1 settled action(s); ledger restored."
+      },
+      {
+        "id": "evt_8",
+        "agentId": "agent_support",
+        "role": "Support",
+        "kind": "sla",
+        "summary": "SLA breach enqueued exception for human review."
+      }
+    ],
+    "providerMode": "simulation"
+  },
+  "adversarial_stdout": "forgery detected\"\n    },\n    {\n      \"id\": \"HEALTH\",\n      \"ok\": true,\n      \"detail\": \"no live without allow\"\n    },\n    {\n      \"id\": \"OTEL\",\n      \"ok\": true,\n      \"detail\": \"spans=5\"\n    }\n  ]\n}\n"
+}

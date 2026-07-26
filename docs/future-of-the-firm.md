@@ -6,10 +6,10 @@ CorpOS is a **reference implementation of an autonomous company**. The thesis:
 
 ## Four layers
 
-1. **Firm model** — org graph, membership (G1), owners, department capital, SLAs, exception queues with dissent (G4) and quorum hooks (G3).
-2. **Work model** — work contracts, handoffs with delegation envelopes, draft→settle, compensating actions, orchestrator pause/resume.
-3. **Control plane** — MCP-gated tools, fail-closed risk ladder, durable HITL, kill/budgets, run traces.
-4. **Governance plane** — PEP (ToolGateway) + Rego-shaped PDP, three-layer authz (agent→tool, agent→agent, originator→resource), OTel GenAI spans, AIBOM, OWASP ASI / NIST AI RMF crosswalk.
+1. **Firm model** — org graph, membership (G1), deliberation (G2), quorum (G3), dissent (G4), transparency (G5), appeal (G6), capital, SLAs.
+2. **Work model** — work contracts, handoffs with delegation envelopes, draft→settle, compensating actions, orchestrator `enqueueAndRun` / `waitForResume`.
+3. **Control plane** — MCP-gated tools (+ elicitation), fail-closed risk ladder, durable HITL, kill/budgets, run traces, TTL scheduler.
+4. **Governance plane** — PEP (ToolGateway) + Rego-shaped PDP, three-layer authz, strict/audit modes, OTel GenAI (+ optional OTLP), AIBOM, OWASP ASI / NIST AI RMF crosswalk.
 
 Interop protocols (MCP, optional A2A later) are **transport**. They do not encode community governance — CorpOS does.
 
@@ -24,8 +24,8 @@ Humans govern **by exception** in the ops console (Approve / Reject / Kill). Aut
 
 ## Providers
 
-- **Simulation** (default): deterministic CI and demos
-- **Live**: `CORPOS_ALLOW_LIVE=1` + `OPENROUTER_API_KEY` wires `HttpLLMProvider`; health `mode` is `live` only then
+- **Simulation** (default): deterministic CI and demos (scripted company-day)
+- **Live**: `CORPOS_ALLOW_LIVE=1` + `OPENROUTER_API_KEY` wires `HttpLLMProvider` into company-day/orchestrator; health `mode` is `live` only then
 
 ## Stack appendix
 

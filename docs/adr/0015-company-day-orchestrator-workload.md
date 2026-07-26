@@ -1,13 +1,9 @@
-# ADR-15: Company-day orchestrator workload
+# ADR-15: Company-day orchestrator + SSE (r3 amendment)
 
 ## Status
-Accepted (corpos-autonomous-company-r2)
-
-## Context
-July 2026 autonomous-company reference revision.
+Accepted (corpos-autonomous-company-r3)
 
 ## Decision
-Implement Company-day orchestrator workload as specified in corporate master-spec ADR-15.
-
-## Consequences
-Bound by site harness verify/adversarial gates.
+Company day drives agents via `Orchestrator.enqueueAndRun`. Handoffs create successor
+tasks. HITL can `waitForResume` when awaitHitl is enabled. `/api/events` streams live
+firm/timeline events over SSE.

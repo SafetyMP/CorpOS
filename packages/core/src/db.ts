@@ -36,7 +36,8 @@ async function migrate(client: Client): Promise<void> {
       accepts INTEGER NOT NULL DEFAULT 0,
       rejects INTEGER NOT NULL DEFAULT 0,
       violations INTEGER NOT NULL DEFAULT 0,
-      active INTEGER NOT NULL DEFAULT 1
+      active INTEGER NOT NULL DEFAULT 1,
+      approver_roles TEXT NOT NULL DEFAULT '[]'
     );
     CREATE TABLE IF NOT EXISTS contracts (
       id TEXT PRIMARY KEY,
@@ -81,7 +82,27 @@ async function migrate(client: Client): Promise<void> {
       decided_at TEXT,
       decided_by TEXT,
       dissent_reason TEXT,
-      pause_json TEXT
+      pause_json TEXT,
+      appeal_used INTEGER NOT NULL DEFAULT 0,
+      appealed_at TEXT,
+      votes_json TEXT NOT NULL DEFAULT '[]'
+    );
+    CREATE TABLE IF NOT EXISTS deliberation_entries (
+      id TEXT PRIMARY KEY,
+      exception_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      by TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS transparency_records (
+      id TEXT PRIMARY KEY,
+      decision_id TEXT NOT NULL,
+      trace_id TEXT,
+      kind TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS drafts (
       id TEXT PRIMARY KEY,
@@ -143,6 +164,10 @@ async function migrate(client: Client): Promise<void> {
   for (const sql of [
     "ALTER TABLE agents ADD COLUMN active INTEGER NOT NULL DEFAULT 1",
     "ALTER TABLE exceptions ADD COLUMN dissent_reason TEXT",
+    "ALTER TABLE agents ADD COLUMN approver_roles TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE exceptions ADD COLUMN appeal_used INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE exceptions ADD COLUMN appealed_at TEXT",
+    "ALTER TABLE exceptions ADD COLUMN votes_json TEXT NOT NULL DEFAULT '[]'",
   ]) {
     try {
       await client.execute(sql);

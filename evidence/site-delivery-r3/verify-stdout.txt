@@ -1,0 +1,83 @@
+check-stub-canary: ok
+verify: using npm 11.17.0 via npm
+==> reuse node_modules (set CORPOS_VERIFY_CLEAN=1 to force npm ci)
+verify: typescript@5.9.3 lock bind ok
+==> build
+
+> corpos@0.2.0 build
+> npm run build -w @corpos/core && npm run build -w @corpos/mcp-knowledge && npm run build -w @corpos/api && npm run build -w @corpos/console
+
+
+> @corpos/core@0.2.0 build
+> tsc -p tsconfig.json
+
+
+> @corpos/mcp-knowledge@0.2.0 build
+> tsc -p tsconfig.json
+
+
+> @corpos/api@0.2.0 build
+> tsc -p tsconfig.json
+
+
+> @corpos/console@0.2.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 7 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                  0.71 kB │ gzip: 0.39 kB
+dist/assets/index-Bfp3opQe.css   2.32 kB │ gzip: 1.00 kB
+dist/assets/index-EZBLqJ-Y.js   19.91 kB │ gzip: 7.86 kB
+✓ built in 132ms
+==> typecheck + test + lint + format
+
+> corpos@0.2.0 typecheck
+> npm run typecheck -w @corpos/core && npm run typecheck -w @corpos/mcp-knowledge && npm run typecheck -w @corpos/api && npm run typecheck -w @corpos/console
+
+
+> @corpos/core@0.2.0 typecheck
+> tsc -p tsconfig.json --noEmit
+
+
+> @corpos/mcp-knowledge@0.2.0 typecheck
+> tsc -p tsconfig.json --noEmit
+
+
+> @corpos/api@0.2.0 typecheck
+> tsc -p tsconfig.json --noEmit
+
+
+> @corpos/console@0.2.0 typecheck
+> tsc -p tsconfig.json --noEmit
+
+
+> corpos@0.2.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /Users/sagehart/Downloads/CorpOS
+
+ ✓ test/governance.test.ts (5 tests) 67ms
+ ✓ test/governance-r3.test.ts (8 tests) 92ms
+ ✓ test/company-day.test.ts (6 tests) 288ms
+
+ Test Files  3 passed (3)
+      Tests  19 passed (19)
+   Start at  09:00:39
+   Duration  1.36s (transform 152ms, setup 0ms, collect 2.41s, tests 447ms, environment 0ms, prepare 169ms)
+
+
+> corpos@0.2.0 lint
+> eslint .
+
+
+> corpos@0.2.0 format:check
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+==> pedagogy (slate console, timeline, demo.gif)
+verify: ok
