@@ -13,16 +13,23 @@ Treat it as a design artifact you can run locally.
 - Shared-mode console sends Bearer (`VITE_DASHBOARD_API_TOKEN` / `DASHBOARD_API_TOKEN`).
 - G3 quorum, G6 appeal, and enforcement `strict`/`audit` modes.
 - Hash-chained audit receipts (`npm run audit:verify`).
+- Company-day demos do not auto-approve exceptions unless a caller passes
+  `autoApproveException: true` (tests/CI only).
 
 ## Not provided
 
 - Full multi-tenant isolation as a security boundary.
 - Production OIDC / TLS by default.
 - Real payment or messaging providers.
+- Live LLM agent execution (health may report `mode: "live"`; company-day still
+  uses `SimulationProvider`).
 
 ## Shared demo
 
-When `CORPOS_MODE=shared`, `DASHBOARD_API_TOKEN` is required for approval and kill mutations.
+When `CORPOS_MODE=shared`, `DASHBOARD_API_TOKEN` is required as a **Bearer**
+token on API approve and kill mutations. The ops console sends
+`VITE_DASHBOARD_API_TOKEN` when configured. This is a
+static token compare for demos, not an OAuth flow.
 
 ## Dependency / supply-chain hygiene
 
@@ -42,4 +49,6 @@ When `CORPOS_MODE=shared`, `DASHBOARD_API_TOKEN` is required for approval and ki
 
 ## Reporting
 
-Use GitHub Security Advisories on the CorpOS repository.
+Use GitHub Security Advisories on the CorpOS repository for **vulnerabilities**.
+Conduct issues are handled under [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), not
+security advisories.

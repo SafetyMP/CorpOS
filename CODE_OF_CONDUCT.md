@@ -54,12 +54,13 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the repository maintainers via [GitHub Security Advisories on the
-CorpOS repository](https://github.com/SafetyMP/CorpOS/security/advisories/new)
-(for security-sensitive reports) or by contacting the SafetyMP maintainers
-through the organization profile. All complaints will be reviewed and
-investigated promptly and fairly. All community leaders are obligated to respect
-the privacy and security of the reporter of any incident.
+reported privately to the [SafetyMP maintainers](https://github.com/SafetyMP)
+(open a private contact via the GitHub profile, or email the account owner if
+listed). Do **not** use GitHub Security Advisories for conduct reports —
+advisories are reserved for vulnerabilities; see [SECURITY.md](SECURITY.md).
+All complaints will be reviewed and investigated promptly and fairly. All
+community leaders are obligated to respect the privacy and security of the
+reporter of any incident.
 
 ## Enforcement Guidelines
 

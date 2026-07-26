@@ -22,6 +22,14 @@ Pedagogical mapping only — **not** a certification claim.
 | **G5** decision transparency | Implemented |
 | **G6** appeal / escalation | Implemented |
 
+## Firm governance labels (G1–G6)
+
+| Label | Status in this reference |
+| --- | --- |
+| **G1** membership / agent `active` | Implemented |
+| **G4** dissent on reject | Implemented |
+| G2 / G3 / G5 / G6 | Pedagogical targets in thesis / ADR-20; not fully coded as firm hooks |
+
 ## OWASP Top 10 for Agentic Applications 2026
 
 See Governor `/api/governance` and `scripts/harness/adversarial-run.mjs` ASI cells.
@@ -29,5 +37,5 @@ See Governor `/api/governance` and `scripts/harness/adversarial-run.mjs` ASI cel
 ## Related standards
 
 - ISO/IEC 42001 / EU AI Act Art. 50: transparency records via Governor + audit chain
-- MCP 2025-11-25: elicitation-aligned privileged flows via exception queue; shared demo uses Bearer token
+- MCP 2025-11-25: elicitation-aligned privileged flows via exception queue; shared demo uses Bearer token (`DASHBOARD_API_TOKEN` / `VITE_DASHBOARD_API_TOKEN`), not a full OAuth flow
 - OTel GenAI semantic conventions (Development): span attributes `gen_ai.*`; optional OTLP export

@@ -5,6 +5,14 @@
   "description": "CorpOS — reference implementation of an autonomous company",
   "author": "SafetyMP",
   "license": "Apache-2.0",
+  "homepage": "https://github.com/SafetyMP/CorpOS#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SafetyMP/CorpOS.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SafetyMP/CorpOS/issues"
+  },
   "type": "module",
   "workspaces": [
     "packages/*",

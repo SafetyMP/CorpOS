@@ -1,5 +1,5 @@
 # Fly.io config. Deploy with:
-#   flyctl launch --image ghcr.io/safetymp/corpos:0.1.0   (use the published image)
+#   flyctl launch --image ghcr.io/safetymp/corpos:0.2.0   (or :latest / a semver tag)
 #   flyctl deploy                                            (build from the Dockerfile)
 # Or via the deploy.yml workflow with FLY_API_TOKEN set.
 # NOTE: choose a globally-unique app name (flyctl apps create).
