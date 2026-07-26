@@ -16,7 +16,7 @@ Humans govern **by exception**. Autonomy is **earned** from evidence (trust ledg
 
 1. `npm install && npm run build && npm run dev`
 2. Open the ops console; click **Run company day**
-3. Watch handoffs, one autonomous settle, one exception, trust unlock
+3. Watch the activity timeline as agents hand off work, settle autonomously, raise an exception, and unlock trust
 4. Optionally open Governor view / run `npm run audit:verify`
 
 ## Stack appendix

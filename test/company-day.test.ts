@@ -18,6 +18,13 @@ describe("company day", () => {
     expect(result.slaExceptions).toBeGreaterThanOrEqual(1);
     expect(result.trustAfter).toBeGreaterThanOrEqual(2);
     expect(result.ok).toBe(true);
+    expect(result.timeline.length).toBeGreaterThanOrEqual(6);
+    expect(result.timeline[0]?.kind).toBe("intake");
+    const kinds = result.timeline.map((e) => e.kind);
+    expect(kinds.filter((k) => k === "handoff").length).toBeGreaterThanOrEqual(2);
+    expect(kinds).toContain("autonomous_settle");
+    expect(kinds).toContain("exception");
+    expect(kinds).toContain("trust");
     const verify = await company.audit.verify();
     expect(verify.ok).toBe(true);
     company.close();

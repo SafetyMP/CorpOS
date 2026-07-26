@@ -1,10 +1,11 @@
 :root {
-  --bg: #0f1410;
-  --panel: #1a221c;
-  --ink: #e8f0e9;
-  --muted: #9aab9d;
-  --accent: #c4f542;
-  --line: #2c3a30;
+  --bg: #0f1419;
+  --panel: #1a222d;
+  --ink: #e6ebf0;
+  --muted: #8b97a5;
+  --accent: #2f8f9a;
+  --accent-ink: #061318;
+  --line: #2a3440;
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
 }
 
@@ -14,7 +15,7 @@
 
 body {
   margin: 0;
-  background: radial-gradient(1200px 600px at 10% -10%, #243528 0%, transparent 55%), var(--bg);
+  background: radial-gradient(1200px 600px at 12% -12%, #243044 0%, transparent 55%), var(--bg);
   color: var(--ink);
   min-height: 100vh;
 }
@@ -61,11 +62,16 @@ h1 {
 
 button {
   background: var(--accent);
-  color: #132015;
+  color: var(--accent-ink);
   border: 0;
   padding: 0.7rem 1rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 button.ghost {
@@ -81,9 +87,13 @@ button.ghost {
 }
 
 section {
-  background: color-mix(in oklab, var(--panel) 90%, black);
+  background: color-mix(in oklab, var(--panel) 92%, black);
   border: 1px solid var(--line);
   padding: 1rem 1.1rem;
+}
+
+section.company-day {
+  grid-column: 1 / -1;
 }
 
 h2 {
@@ -103,7 +113,67 @@ ul {
   color: var(--muted);
 }
 
-pre {
-  white-space: pre-wrap;
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.metrics strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.55rem 0.65rem;
+  border-left: 2px solid var(--accent);
+  background: color-mix(in oklab, var(--panel) 70%, #0a1016);
+  opacity: 0;
+  transform: translateY(4px);
+  animation: timeline-in 280ms ease-out forwards;
+}
+
+.timeline .role {
+  color: var(--accent);
   font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.timeline .summary {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.timeline .kind {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-top: 0.15rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@keyframes timeline-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

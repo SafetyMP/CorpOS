@@ -26,13 +26,14 @@ const repoRoot = path.join(__dirname, "..");
 const outDir = path.join(repoRoot, "docs", "assets");
 const baseUrl = process.env.SCREENSHOT_BASE_URL ?? "http://localhost:3000";
 
-const frames = [
+/** Named PNG stills kept for README table + rebuild-gif fallback. */
+const stills = [
   { file: "ops.png", name: "Ops" },
   { file: "ops-day.png", name: "Company day" },
   { file: "governor.png", name: "Governor" },
 ];
 
-const GIF_FRAME_DELAY_MS = 2_000;
+const GIF_FRAME_DELAY_MS = 1_200;
 
 function launchOptions() {
   if (process.env.CI) {
@@ -59,7 +60,7 @@ async function writeDemoGif(gifFrames) {
 async function rebuildGifFromExisting() {
   await mkdir(outDir, { recursive: true });
   const gifFrames = [];
-  for (const { file, name } of frames) {
+  for (const { file, name } of stills) {
     const buffer = await readFile(path.join(outDir, file));
     gifFrames.push({ buffer, name });
     console.log(`Loaded ${name} -> docs/assets/${file}`);
@@ -68,11 +69,15 @@ async function rebuildGifFromExisting() {
 }
 
 async function saveShot(page, file, name) {
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(400);
   const buffer = await page.screenshot({ fullPage: false });
-  const dest = path.join(outDir, file);
-  await writeFile(dest, buffer);
-  console.log(`Captured ${name} -> docs/assets/${file}`);
+  if (file) {
+    const dest = path.join(outDir, file);
+    await writeFile(dest, buffer);
+    console.log(`Captured ${name} -> docs/assets/${file}`);
+  } else {
+    console.log(`Captured GIF-only frame: ${name}`);
+  }
   return buffer;
 }
 
@@ -94,13 +99,28 @@ async function captureLive() {
 
   const gifFrames = [];
 
-  const opsBuffer = await saveShot(page, "ops.png", "Ops");
-  gifFrames.push({ buffer: opsBuffer, name: "Ops" });
+  const opsBuffer = await saveShot(page, "ops.png", "Ops idle");
+  gifFrames.push({ buffer: opsBuffer, name: "Ops idle" });
 
   await page.getByRole("button", { name: "Run company day" }).click();
-  await page.locator("section pre").waitFor({ state: "visible", timeout: 30_000 });
-  const dayBuffer = await saveShot(page, "ops-day.png", "Company day");
-  gifFrames.push({ buffer: dayBuffer, name: "Company day" });
+  await page.locator("[data-company-day]").waitFor({ state: "visible", timeout: 30_000 });
+
+  // Capture progressive agent activity as the timeline stage-reveals.
+  const beatKinds = ["handoff", "autonomous_settle", "exception", "trust", "sla"];
+  for (const kind of beatKinds) {
+    await page.locator(`[data-timeline-kind="${kind}"]`).first().waitFor({
+      state: "visible",
+      timeout: 30_000,
+    });
+    const buffer = await saveShot(page, null, `Activity ${kind}`);
+    gifFrames.push({ buffer, name: `Activity ${kind}` });
+  }
+
+  await page
+    .locator('[data-company-day="complete"]')
+    .waitFor({ state: "visible", timeout: 30_000 });
+  const dayBuffer = await saveShot(page, "ops-day.png", "Company day complete");
+  gifFrames.push({ buffer: dayBuffer, name: "Company day complete" });
 
   await page.getByRole("button", { name: "Governor" }).click();
   await page.getByRole("heading", { name: "Governor" }).waitFor({ state: "visible" });

@@ -11,6 +11,17 @@ import { SimulationProvider, tc } from "./llm.js";
 import { agents, contracts, exceptions } from "./schema.js";
 import { mcpKnowledgeSearch } from "./mcp-client.js";
 
+export type TimelineKind =
+  "intake" | "handoff" | "autonomous_settle" | "exception" | "compensate" | "trust" | "sla";
+
+export interface TimelineEvent {
+  id: string;
+  agentId: string;
+  role: string;
+  kind: TimelineKind;
+  summary: string;
+}
+
 export interface CompanyDayResult {
   contractId: string;
   handoffs: number;
@@ -21,6 +32,7 @@ export interface CompanyDayResult {
   slaExceptions: number;
   auditHead: string;
   ok: boolean;
+  timeline: TimelineEvent[];
 }
 
 function countHandoffs(steps: unknown[]): number {
@@ -45,6 +57,12 @@ export async function runCompanyDay(opts?: {
     : undefined;
 
   const company = await createCompany({ dbPath: opts?.dbPath ?? ":memory:", mcpInvoke });
+  const timeline: TimelineEvent[] = [];
+  let seq = 0;
+  const push = (event: Omit<TimelineEvent, "id">) => {
+    seq += 1;
+    timeline.push({ id: `evt_${seq}`, ...event });
+  };
 
   const provider = new SimulationProvider({
     "Support Agent": [
@@ -81,6 +99,12 @@ export async function runCompanyDay(opts?: {
     assignees: ["agent_support", "agent_finance", "agent_ops"],
     slaMinutes: 240,
   });
+  push({
+    agentId: "agent_support",
+    role: "Support",
+    kind: "intake",
+    summary: "Opened refund contract for ada@example.com ($49).",
+  });
 
   let handoffs = 0;
   let autonomousSettles = 0;
@@ -94,7 +118,16 @@ export async function runCompanyDay(opts?: {
     systemPrompt: "You are Support Agent for CorpOS.",
     userPrompt: "Handle the refund intake and hand off to finance.",
   });
-  handoffs += countHandoffs(support.steps);
+  const supportHandoffs = countHandoffs(support.steps);
+  handoffs += supportHandoffs;
+  if (supportHandoffs > 0) {
+    push({
+      agentId: "agent_support",
+      role: "Support",
+      kind: "handoff",
+      summary: "Handed refund obligation to Finance.",
+    });
+  }
 
   await company.db
     .update(agents)
@@ -111,8 +144,23 @@ export async function runCompanyDay(opts?: {
   });
   if (finance.steps.some((s) => typeof s === "object" && s && "draftSettled" in s)) {
     autonomousSettles++;
+    push({
+      agentId: "agent_finance",
+      role: "Finance",
+      kind: "autonomous_settle",
+      summary: "Autonomously settled $49 refund (earned risk budget).",
+    });
   }
-  handoffs += countHandoffs(finance.steps);
+  const financeHandoffs = countHandoffs(finance.steps);
+  handoffs += financeHandoffs;
+  if (financeHandoffs > 0) {
+    push({
+      agentId: "agent_finance",
+      role: "Finance",
+      kind: "handoff",
+      summary: "Handed post-refund health check to Ops.",
+    });
+  }
 
   const ops = await runAgentTurn(company, provider, {
     agentId: "agent_ops",
@@ -124,6 +172,12 @@ export async function runCompanyDay(opts?: {
   });
 
   if (ops.awaitingExceptionId) {
+    push({
+      agentId: "agent_ops",
+      role: "Ops",
+      kind: "exception",
+      summary: "Restart requires human approval — exception queued.",
+    });
     await decideException(company, ops.awaitingExceptionId, "approved", "carol@corpos.local");
     const ex = (
       await company.db.select().from(exceptions).where(eq(exceptions.id, ops.awaitingExceptionId))
@@ -136,11 +190,31 @@ export async function runCompanyDay(opts?: {
       tenantId: "default",
     });
     exceptionSettles++;
+    push({
+      agentId: "agent_ops",
+      role: "Ops",
+      kind: "exception",
+      summary: "Human approved restart; billing-api restarted.",
+    });
     await company.trust.recordAccept("agent_support");
     await company.trust.recordAccept("agent_support");
+    push({
+      agentId: "agent_support",
+      role: "Support",
+      kind: "trust",
+      summary: "Clean accepts raised Support maxAutonomousRisk.",
+    });
   }
 
   const compensated = await company.gateway.compensate(contractId);
+  if (compensated > 0) {
+    push({
+      agentId: "agent_finance",
+      role: "Finance",
+      kind: "compensate",
+      summary: `Compensated ${compensated} settled action(s); ledger restored.`,
+    });
+  }
 
   const short = await openContract(company, {
     title: "Expiring SLA",
@@ -153,6 +227,14 @@ export async function runCompanyDay(opts?: {
     .set({ slaDueAt: new Date(Date.now() - 1000).toISOString() })
     .where(eq(contracts.id, short.contractId));
   const slaExceptions = await checkSlaBreaches(company);
+  if (slaExceptions > 0) {
+    push({
+      agentId: "agent_support",
+      role: "Support",
+      kind: "sla",
+      summary: "SLA breach enqueued exception for human review.",
+    });
+  }
 
   const trustAfter = (await company.trust.get("agent_support"))?.maxAutonomousRisk ?? 0;
 
@@ -166,6 +248,7 @@ export async function runCompanyDay(opts?: {
     slaExceptions,
     auditHead: await company.audit.head(),
     ok: handoffs >= 2 && autonomousSettles >= 1 && exceptionSettles >= 1 && trustAfter >= 2,
+    timeline,
   };
   return { company, result };
 }
