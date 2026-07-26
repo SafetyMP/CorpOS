@@ -1,6 +1,6 @@
 # CorpOS
 
-> Reference implementation of an **autonomous company** — firm model, work contracts, and a policy-gated control plane.
+> Reference implementation of an **autonomous company** — firm model, work contracts, policy-gated control plane, and a July 2026 **governance plane** (PDP/PEP, three-layer authz, OTel GenAI, OWASP ASI / NIST RMF crosswalk).
 
 [![CI](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml)
@@ -8,11 +8,13 @@
 [![License: Apache-2.0](https://img.shields.io/github/license/SafetyMP/CorpOS)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)](#quick-start)
 
-CorpOS shows how a firm operates when department agents do most work and **humans govern by exception**. Autonomy is earned from evidence, not granted in prompts.
+CorpOS shows how a firm operates when department agents do most work and **humans govern by exception** (Approve / Reject / Kill in the ops console). Autonomy is earned from evidence, not granted in prompts. Interop protocols (MCP) are transport; **community governance (G1–G6)** lives in the firm.
 
 > **Scope:** Reference architecture and runnable demo — **not** a production-hardened SaaS. See [SECURITY.md](SECURITY.md).
 
-Read the thesis: [`docs/future-of-the-firm.md`](docs/future-of-the-firm.md).
+Default mode is **simulation** (`SimulationProvider`) for deterministic CI. Live LLM (`HttpLLMProvider`) only when `CORPOS_ALLOW_LIVE=1` and `OPENROUTER_API_KEY` are set — `/api/health.mode` never lies.
+
+Read the thesis: [`docs/future-of-the-firm.md`](docs/future-of-the-firm.md). Governance crosswalk: [`docs/governance-crosswalk.md`](docs/governance-crosswalk.md). AIBOM: [`docs/aibom.json`](docs/aibom.json).
 
 **Jump to:** [Demo](#demo) · [Quick start](#quick-start) · [Architecture](#architecture) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [ADRs](docs/adr/)
 

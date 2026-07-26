@@ -80,6 +80,11 @@ export interface ToolContext {
   taskId: ID;
   contractId: ID;
   tenantId: ID;
+  originatingAuthority?: string;
+  delegatedBy?: string;
+  delegationDepth?: number;
+  originatorToolAllowlist?: string[];
+  agentToolAllowlist?: string[];
 }
 
 export interface Tool {
@@ -95,6 +100,8 @@ export interface PolicyDecision {
   reason: string;
   approvalId?: string;
   draftId?: string;
+  decisionId?: string;
+  authzLayer?: string;
 }
 
 export interface PolicyRule {

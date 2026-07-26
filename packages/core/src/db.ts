@@ -35,7 +35,8 @@ async function migrate(client: Client): Promise<void> {
       trust_score REAL NOT NULL DEFAULT 0,
       accepts INTEGER NOT NULL DEFAULT 0,
       rejects INTEGER NOT NULL DEFAULT 0,
-      violations INTEGER NOT NULL DEFAULT 0
+      violations INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE IF NOT EXISTS contracts (
       id TEXT PRIMARY KEY,
@@ -79,6 +80,7 @@ async function migrate(client: Client): Promise<void> {
       created_at TEXT NOT NULL,
       decided_at TEXT,
       decided_by TEXT,
+      dissent_reason TEXT,
       pause_json TEXT
     );
     CREATE TABLE IF NOT EXISTS drafts (
@@ -137,4 +139,15 @@ async function migrate(client: Client): Promise<void> {
       tokens_used INTEGER NOT NULL DEFAULT 0
     );
   `);
+  // Additive migrations for existing files
+  for (const sql of [
+    "ALTER TABLE agents ADD COLUMN active INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE exceptions ADD COLUMN dissent_reason TEXT",
+  ]) {
+    try {
+      await client.execute(sql);
+    } catch {
+      /* column already exists */
+    }
+  }
 }

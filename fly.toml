@@ -25,7 +25,8 @@ primary_region = "sjc"
     path = "/api/health"
 
 # Simulation-first: with no secret set the app boots and the demo runs.
-# Set the secret for live agents: flyctl secrets set OPENROUTER_API_KEY=sk-or-...
+# Live mode requires BOTH secrets: OPENROUTER_API_KEY and CORPOS_ALLOW_LIVE=1
+# (key alone keeps health.mode=simulation).
 [env]
   LOG_LEVEL = "info"
 

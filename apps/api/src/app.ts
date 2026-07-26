@@ -10,11 +10,16 @@ import {
   decideException,
   departments,
   exceptions,
+  listSpans,
+  resolveProvider,
   runCompanyDay,
   traces,
   type Company,
 } from "@corpos/core";
 import { eq } from "drizzle-orm";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 function requireAuth(c: { req: { header: (n: string) => string | undefined } }): boolean {
   if (process.env.CORPOS_MODE !== "shared") return true;
@@ -24,15 +29,27 @@ function requireAuth(c: { req: { header: (n: string) => string | undefined } }):
   return header === `Bearer ${expected}`;
 }
 
-export function buildApp(company: Company): Hono {
+function loadAibom(): unknown {
+  const candidates = [
+    path.resolve(process.cwd(), "docs/aibom.json"),
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../docs/aibom.json"),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, "utf8"));
+  }
+  return { error: "aibom missing" };
+}
+
+export function buildApp(company: Company, mode: "simulation" | "live" = "simulation"): Hono {
   const app = new Hono();
   app.use("*", cors());
 
   app.get("/api/health", (c) =>
     c.json({
       ok: true,
-      mode: process.env.OPENROUTER_API_KEY ? "live" : "simulation",
+      mode,
       product: "autonomous-company-reference",
+      provider: mode === "live" ? "HttpLLMProvider" : "SimulationProvider",
     }),
   );
 
@@ -57,9 +74,19 @@ export function buildApp(company: Company): Hono {
 
   app.post("/api/exceptions/:id/decide", async (c) => {
     if (!requireAuth(c)) return c.json({ error: "dashboard authentication required" }, 401);
-    const body = await c.req.json<{ decision: "approved" | "rejected"; by?: string }>();
-    await decideException(company, c.req.param("id"), body.decision, body.by ?? "operator");
-    return c.json({ ok: true });
+    const body = await c.req.json<{
+      decision: "approved" | "rejected";
+      by?: string;
+      dissentReason?: string;
+    }>();
+    const out = await decideException(
+      company,
+      c.req.param("id"),
+      body.decision,
+      body.by ?? "operator",
+      body.dissentReason,
+    );
+    return c.json({ ok: true, ...out });
   });
 
   app.post("/api/kill", async (c) => {
@@ -70,9 +97,49 @@ export function buildApp(company: Company): Hono {
   });
 
   app.post("/api/company-day", async (c) => {
-    const { result, company: ephemeral } = await runCompanyDay({ dbPath: ":memory:" });
-    ephemeral.close();
+    let autoApproveException = true;
+    try {
+      const body = await c.req.json<{ autoApproveException?: boolean }>();
+      if (body.autoApproveException === false) autoApproveException = false;
+    } catch {
+      /* empty body */
+    }
+    const { result } = await runCompanyDay({ company, autoApproveException });
     return c.json(result);
+  });
+
+  app.get("/api/governance", async (c) => {
+    const aibom = loadAibom();
+    const spans = listSpans().slice(-50);
+    const recentDenies = (await company.audit.verify()).ok;
+    const ctrl = (
+      await company.db.select().from(controlState).where(eq(controlState.id, "global"))
+    )[0];
+    return c.json({
+      aibom,
+      spans,
+      auditOk: recentDenies,
+      killed: Boolean(ctrl?.killed),
+      asiControls: {
+        ASI01: "untrusted KB/CRM boundary",
+        ASI02: "fail-closed gateway + draft/settle",
+        ASI03: "three-layer authz",
+        ASI04: "AIBOM + policy bundle hash",
+        ASI05: "no shell/eval tools registered",
+        ASI06: "untrusted memory/context flags",
+        ASI07: "handoff envelopes with depth/origin",
+        ASI08: "capital/kill/depth caps",
+        ASI09: "L3+ exception HITL",
+        ASI10: "kill switch + trust demotion",
+      },
+      nistRmf: {
+        GOVERN: "policy PDP/PEP + enforcement modes",
+        MAP: "AIBOM inventory",
+        MEASURE: "OTel GenAI spans + trust ledger",
+        MANAGE: "exceptions, kill, compensators",
+      },
+      note: "Crosswalk is pedagogical; not a certification claim.",
+    });
   });
 
   app.get("/api/traces/:taskId", async (c) => {
@@ -119,6 +186,11 @@ export function buildApp(company: Company): Hono {
   return app;
 }
 
-export async function createDefaultCompany(): Promise<Company> {
-  return createCompany({ dbPath: process.env.CORPOS_DB });
+export async function createDefaultCompany(): Promise<{
+  company: Company;
+  mode: "simulation" | "live";
+}> {
+  const { mode } = resolveProvider();
+  const company = await createCompany({ dbPath: process.env.CORPOS_DB });
+  return { company, mode };
 }

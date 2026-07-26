@@ -1,10 +1,11 @@
 import type { Db } from "./db.js";
-import type { Effect, PolicyDecision, PolicyRule, RiskLevel, Tool } from "./types.js";
+import type { Effect, PolicyDecision, PolicyRule, RiskLevel, Tool, ToolContext } from "./types.js";
 import { agents, controlState, departments, exceptions } from "./schema.js";
 import { eq } from "drizzle-orm";
 import { newId } from "./id.js";
 import { now } from "./types.js";
 import type { AuditLog } from "./audit.js";
+import { evaluateThreeLayer, type EnforcementMode } from "./authz.js";
 
 export function globMatch(pattern: string, name: string): boolean {
   if (pattern === name || pattern === "*") return true;
@@ -23,8 +24,20 @@ function ladderEffect(risk: RiskLevel, maxAuto: number, requiresApproval?: boole
   return "approve";
 }
 
+const DEFAULT_TOOL_ALLOWLIST = [
+  "crm.lookup",
+  "knowledge.search",
+  "billing.issue_refund",
+  "billing.reverse_refund",
+  "comms.send_email",
+  "ops.restart_service",
+  "ops.mark_incident",
+  "agent.handoff",
+];
+
 export class PolicyEngine {
   private rules: PolicyRule[] = [];
+  private mode: EnforcementMode = "strict";
 
   constructor(
     private db: Db,
@@ -37,28 +50,73 @@ export class PolicyEngine {
     this.rules.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
   }
 
+  setEnforcementMode(mode: EnforcementMode): void {
+    this.mode = mode;
+  }
+
   async evaluate(
     tool: Tool | undefined,
     args: Record<string, unknown>,
-    ctx: { tenantId: string; agentId: string; taskId: string; contractId: string },
+    ctx: ToolContext,
   ): Promise<PolicyDecision> {
     const ctrl = (
       await this.db.select().from(controlState).where(eq(controlState.id, "global"))
     )[0];
     if (ctrl?.killed) {
-      return { effect: "deny", reason: "kill switch engaged" };
-    }
-    if (!tool) {
-      await this.audit.append("policy.deny", { tool: "unknown", reason: "unknown tool" });
-      return { effect: "deny", reason: "unknown tool (fail-closed)" };
+      return {
+        effect: "deny",
+        reason: "kill switch engaged",
+        decisionId: newId("dec"),
+      };
     }
 
     const agent = (await this.db.select().from(agents).where(eq(agents.id, ctx.agentId)))[0];
-    const maxAuto = agent?.maxAutonomousRisk ?? 0;
+    const authz = evaluateThreeLayer({
+      agentId: ctx.agentId,
+      agentActive: agent ? agent.active !== 0 : false,
+      tool,
+      toolName: tool?.name ?? "unknown",
+      agentToolAllowlist: ctx.agentToolAllowlist ?? DEFAULT_TOOL_ALLOWLIST,
+      delegation: {
+        delegatedBy: ctx.delegatedBy,
+        originatingAuthority: ctx.originatingAuthority ?? agent?.owner ?? "",
+        depth: ctx.delegationDepth ?? 0,
+        originatorToolAllowlist: ctx.originatorToolAllowlist ?? ["*"],
+      },
+      mode: this.mode,
+    });
 
+    if (!authz.allowed) {
+      await this.audit.append("policy.deny", {
+        tool: tool?.name ?? "unknown",
+        reason: authz.reason,
+        decisionId: authz.decisionId,
+        layer: authz.layer,
+      });
+      return {
+        effect: "deny",
+        reason: authz.reason,
+        decisionId: authz.decisionId,
+        authzLayer: authz.layer,
+      };
+    }
+
+    if (!tool) {
+      return {
+        effect: "deny",
+        reason: "unknown tool (fail-closed)",
+        decisionId: authz.decisionId,
+      };
+    }
+
+    const maxAuto = agent?.maxAutonomousRisk ?? 0;
     const matched = this.rules.filter((r) => globMatch(r.tool, tool.name))[0];
     if (matched?.effect === "deny") {
-      return { effect: "deny", reason: matched.reason ?? `Rule denies ${tool.name}` };
+      return {
+        effect: "deny",
+        reason: matched.reason ?? `Rule denies ${tool.name}`,
+        decisionId: authz.decisionId,
+      };
     }
 
     if (tool.permission.category === "spend") {
@@ -73,6 +131,7 @@ export class PolicyEngine {
         return {
           effect: "deny",
           reason: `department capital exceeded (${dept.capitalSpent + amount} > ${dept.capitalBudget})`,
+          decisionId: authz.decisionId,
         };
       }
     }
@@ -98,19 +157,33 @@ export class PolicyEngine {
         ttlAt: ttl,
         createdAt: now(),
       });
-      await this.audit.append("exception.requested", { approvalId, tool: tool.name });
+      await this.audit.append("exception.requested", {
+        approvalId,
+        tool: tool.name,
+        decisionId: authz.decisionId,
+      });
       return {
         effect: "approve",
         reason: `${tool.name} requires exception approval`,
         approvalId,
+        decisionId: authz.decisionId,
       };
     }
 
     if (effect === "draft") {
-      return { effect: "draft", reason: `${tool.name} stages as draft`, draftId: newId("draft") };
+      return {
+        effect: "draft",
+        reason: `${tool.name} stages as draft`,
+        draftId: newId("draft"),
+        decisionId: authz.decisionId,
+      };
     }
 
-    return { effect: effect === "allow" ? "allow" : this.defaultEffect, reason: "policy allow" };
+    return {
+      effect: effect === "allow" ? "allow" : this.defaultEffect,
+      reason: "policy allow",
+      decisionId: authz.decisionId,
+    };
   }
 
   async expireTtl(): Promise<number> {
@@ -121,7 +194,7 @@ export class PolicyEngine {
       if (e.ttlAt < t) {
         await this.db
           .update(exceptions)
-          .set({ state: "rejected", decidedAt: t, decidedBy: "ttl" })
+          .set({ state: "rejected", decidedAt: t, decidedBy: "ttl", dissentReason: "TTL expired" })
           .where(eq(exceptions.id, e.id));
         n++;
       }

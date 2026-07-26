@@ -7,6 +7,7 @@ import type { ToolMap } from "./tools.js";
 import { compensators, controlState, departments, drafts, spendLedger, agents } from "./schema.js";
 import { newId } from "./id.js";
 import { now } from "./types.js";
+import { endSpan, startSpan } from "./otel.js";
 
 export interface GatewayInvokeResult {
   decision: PolicyDecision;
@@ -37,17 +38,20 @@ export class ToolGateway {
     ctx: ToolContext,
   ): Promise<GatewayInvokeResult> {
     const tool = this.tools.get(name);
-    const decision = await this.policy.evaluate(tool, args, {
-      tenantId: ctx.tenantId,
-      agentId: ctx.agentId,
-      taskId: ctx.taskId,
-      contractId: ctx.contractId,
+    const span = startSpan("execute_tool", `execute_tool ${name}`, {
+      "gen_ai.operation.name": "execute_tool",
+      "gen_ai.tool.name": name,
+      "gen_ai.agent.name": ctx.agentId,
     });
+    const decision = await this.policy.evaluate(tool, args, ctx);
     await this.audit.append("gateway.decision", {
       tool: name,
       effect: decision.effect,
       reason: decision.reason,
+      decisionId: decision.decisionId,
+      authzLayer: decision.authzLayer,
     });
+    endSpan(span, { decisionId: decision.decisionId });
 
     if (decision.effect === "deny") {
       const agent = (await this.db.select().from(agents).where(eq(agents.id, ctx.agentId)))[0];

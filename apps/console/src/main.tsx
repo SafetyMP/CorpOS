@@ -28,7 +28,6 @@ type Contract = {
   id: string;
   title: string;
   state: string;
-  assigneesJson?: string;
 };
 
 type TimelineEvent = {
@@ -52,6 +51,15 @@ type CompanyDay = {
   timeline: TimelineEvent[];
 };
 
+type Governance = {
+  aibom: { schema?: string; policyBundleHash?: string; agents?: unknown[] };
+  killed: boolean;
+  asiControls: Record<string, string>;
+  nistRmf: Record<string, string>;
+  note: string;
+  spans: { operation: string; name: string; decisionId?: string }[];
+};
+
 const REVEAL_MS = 500;
 
 function App() {
@@ -59,17 +67,21 @@ function App() {
   const [exceptions, setExceptions] = useState<Exception[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [day, setDay] = useState<CompanyDay | null>(null);
+  const [gov, setGov] = useState<Governance | null>(null);
   const [visibleCount, setVisibleCount] = useState(0);
   const [running, setRunning] = useState(false);
   const [tab, setTab] = useState<"ops" | "governor">("ops");
+  const [dissent, setDissent] = useState("");
 
   const refresh = async () => {
     const f = await fetch("/api/firm").then((r) => r.json());
     const e = await fetch("/api/exceptions").then((r) => r.json());
     const c = await fetch("/api/contracts").then((r) => r.json());
+    const g = await fetch("/api/governance").then((r) => r.json());
     setFirm(f);
     setExceptions(e);
     setContracts(c);
+    setGov(g);
   };
 
   useEffect(() => {
@@ -98,14 +110,41 @@ function App() {
     setDay(null);
     setVisibleCount(0);
     try {
-      const r = (await fetch("/api/company-day", { method: "POST" }).then((res) =>
-        res.json(),
-      )) as CompanyDay;
+      const r = (await fetch("/api/company-day", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ autoApproveException: true }),
+      }).then((res) => res.json())) as CompanyDay;
       setDay(r);
       await refresh();
     } finally {
       setRunning(false);
     }
+  };
+
+  const decide = async (id: string, decision: "approved" | "rejected") => {
+    await fetch(`/api/exceptions/${id}/decide`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        decision,
+        by: "operator@console",
+        dissentReason: decision === "rejected" ? dissent || "rejected by operator" : undefined,
+      }),
+    });
+    setDissent("");
+    await refresh();
+  };
+
+  const toggleKill = async () => {
+    const next = !firm?.killed;
+    if (next && !window.confirm("Engage kill switch? All tool invokes will deny.")) return;
+    await fetch("/api/kill", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ killed: next }),
+    });
+    await refresh();
   };
 
   const timelineDone = Boolean(day && visibleCount >= day.timeline.length);
@@ -124,6 +163,9 @@ function App() {
         <div class="actions">
           <button type="button" disabled={running} onClick={() => void runDay()}>
             {running ? "Running…" : "Run company day"}
+          </button>
+          <button type="button" class="ghost" onClick={() => void toggleKill()}>
+            {firm?.killed ? "Release kill" : "Kill switch"}
           </button>
           <button
             type="button"
@@ -165,7 +207,30 @@ function App() {
               <ul>
                 {exceptions.map((e) => (
                   <li key={e.id}>
-                    L{e.riskLevel} {e.tool} — {e.reason}
+                    <div>
+                      L{e.riskLevel} {e.tool} — {e.reason}
+                      <span class="kind">agent {e.agentId}</span>
+                    </div>
+                    <div class="actions" style="margin-top:0.5rem">
+                      <button type="button" onClick={() => void decide(e.id, "approved")}>
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        class="ghost"
+                        onClick={() => void decide(e.id, "rejected")}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                    <label class="muted">
+                      Dissent reason
+                      <input
+                        value={dissent}
+                        onInput={(ev) => setDissent((ev.target as HTMLInputElement).value)}
+                        placeholder="Required narrative on reject"
+                      />
+                    </label>
                   </li>
                 ))}
               </ul>
@@ -173,7 +238,7 @@ function App() {
           </section>
           <section>
             <h2>Contracts</h2>
-            {contracts.length === 0 && !day?.contractId ? (
+            {contracts.length === 0 ? (
               <p class="muted">No open contracts</p>
             ) : (
               <ul>
@@ -182,11 +247,6 @@ function App() {
                     <strong>{c.title}</strong> {c.state}
                   </li>
                 ))}
-                {day?.contractId && !contracts.some((c) => c.id === day.contractId) ? (
-                  <li key={day.contractId}>
-                    <strong>Company day</strong> {day.contractId} (demo run)
-                  </li>
-                ) : null}
               </ul>
             )}
           </section>
@@ -239,11 +299,37 @@ function App() {
             <p>
               Audit head: <code>{firm?.auditHead ?? "—"}</code>
             </p>
-            <p class="muted">
-              Counterfactual replay and audit verification are available via API /
-              <code>npm run audit:verify</code>.
+            <p>Kill switch: {firm?.killed || gov?.killed ? "ENGAGED" : "off"}</p>
+            <p class="muted">{gov?.note}</p>
+          </section>
+          <section>
+            <h2>AIBOM</h2>
+            <p>
+              Policy bundle: <code>{gov?.aibom?.policyBundleHash ?? "—"}</code>
             </p>
-            <p>Kill switch: {firm?.killed ? "ENGAGED" : "off"}</p>
+            <p class="muted">Agents / tools / MCP servers inventoried in docs/aibom.json</p>
+          </section>
+          <section>
+            <h2>OWASP ASI controls</h2>
+            <ul>
+              {gov &&
+                Object.entries(gov.asiControls).map(([k, v]) => (
+                  <li key={k}>
+                    <strong>{k}</strong> {v}
+                  </li>
+                ))}
+            </ul>
+          </section>
+          <section>
+            <h2>NIST AI RMF crosswalk</h2>
+            <ul>
+              {gov &&
+                Object.entries(gov.nistRmf).map(([k, v]) => (
+                  <li key={k}>
+                    <strong>{k}</strong> {v}
+                  </li>
+                ))}
+            </ul>
           </section>
         </main>
       )}

@@ -9,6 +9,7 @@ export function computeMaxAutonomousRisk(stats: {
   violations: number;
 }): number {
   if (stats.violations >= 3 || stats.rejects >= 3) return 0;
+  if (stats.accepts >= 4 && stats.rejects === 0) return 3;
   if (stats.accepts >= 2 && stats.rejects === 0) return 2;
   if (stats.accepts >= 1) return 1;
   return 1;

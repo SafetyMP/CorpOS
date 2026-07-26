@@ -1,32 +1,8 @@
 {
   "schema": "corpos-site-delivery-receipt/v1",
-  "program_id": "corpos-autonomous-company",
-  "site_id": "corpos",
-  "captured_at": "2026-07-26T02:49:43.402794+00:00",
-  "node": "v26.4.0",
-  "surfaces": {
-    "firm_work_control": "packages/core/src",
-    "api": "apps/api/src",
-    "console": "apps/console/src",
-    "mcp_knowledge": "packages/mcp-knowledge/src",
-    "adrs": "docs/adr",
-    "essay": "docs/future-of-the-firm.md"
-  },
-  "company_day": {
-    "contractId": "ctr_g16siuyoYE",
-    "handoffs": 2,
-    "autonomousSettles": 1,
-    "exceptionSettles": 1,
-    "compensated": 1,
-    "trustAfter": 2,
-    "slaExceptions": 1,
-    "auditHead": "913d51c35e75fe4c148b6f893b2add53975564e8033874f24ce8be8737280e5e",
-    "ok": true
-  },
-  "adversarial_stdout": "adversarial: ok",
-  "stack_forbidden_absent": {
-    "better-sqlite3": true,
-    "express_import": true
-  },
-  "verification_scripts": "scripts/harness"
+  "program_id": "corpos-autonomous-company-r2",
+  "recorded_at": "2026-07-26T13:13:35.124777+00:00",
+  "verify": "PASS",
+  "adversarial": "PASS",
+  "notes": "Orchestrator + governance plane revision; shared firm store; ASI matrix."
 }

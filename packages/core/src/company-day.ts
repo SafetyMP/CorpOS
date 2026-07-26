@@ -10,6 +10,8 @@ import {
 import { SimulationProvider, tc } from "./llm.js";
 import { agents, contracts, exceptions } from "./schema.js";
 import { mcpKnowledgeSearch } from "./mcp-client.js";
+import { Orchestrator } from "./orchestrator.js";
+import { resetSpans } from "./otel.js";
 
 export type TimelineKind =
   "intake" | "handoff" | "autonomous_settle" | "exception" | "compensate" | "trust" | "sla";
@@ -44,9 +46,14 @@ function countHandoffs(steps: unknown[]): number {
 
 export async function runCompanyDay(opts?: {
   dbPath?: string;
+  /** Reuse an existing company (shared firm store with console). */
+  company?: Company;
   withMcp?: boolean;
   serverCommand?: { command: string; args: string[] };
+  /** Auto-approve ops exception for deterministic CI (console can decide manually). */
+  autoApproveException?: boolean;
 }): Promise<{ company: Company; result: CompanyDayResult }> {
+  resetSpans();
   const mcpInvoke = opts?.withMcp
     ? async (name: string, args: Record<string, unknown>) => {
         if (name === "knowledge.search") {
@@ -56,13 +63,8 @@ export async function runCompanyDay(opts?: {
       }
     : undefined;
 
-  const company = await createCompany({ dbPath: opts?.dbPath ?? ":memory:", mcpInvoke });
-  const timeline: TimelineEvent[] = [];
-  let seq = 0;
-  const push = (event: Omit<TimelineEvent, "id">) => {
-    seq += 1;
-    timeline.push({ id: `evt_${seq}`, ...event });
-  };
+  const company =
+    opts?.company ?? (await createCompany({ dbPath: opts?.dbPath ?? ":memory:", mcpInvoke }));
 
   const provider = new SimulationProvider({
     "Support Agent": [
@@ -93,6 +95,15 @@ export async function runCompanyDay(opts?: {
     "Ops Agent": [[tc("ops.restart_service", { service: "billing-api" })]],
   });
 
+  company.orchestrator = new Orchestrator(company, { provider, concurrency: 2 });
+
+  const timeline: TimelineEvent[] = [];
+  let seq = 0;
+  const push = (event: Omit<TimelineEvent, "id">) => {
+    seq += 1;
+    timeline.push({ id: `evt_${seq}`, ...event });
+  };
+
   const { contractId, taskId } = await openContract(company, {
     title: "Customer refund day",
     intake: "ada@example.com wants a $49 refund on sub_ada_pro",
@@ -117,7 +128,10 @@ export async function runCompanyDay(opts?: {
     tenantId: "default",
     systemPrompt: "You are Support Agent for CorpOS.",
     userPrompt: "Handle the refund intake and hand off to finance.",
+    originatingAuthority: "alice@corpos.local",
+    delegationDepth: 0,
   });
+
   const supportHandoffs = countHandoffs(support.steps);
   handoffs += supportHandoffs;
   if (supportHandoffs > 0) {
@@ -127,13 +141,16 @@ export async function runCompanyDay(opts?: {
       kind: "handoff",
       summary: "Handed refund obligation to Finance.",
     });
+    await company.trust.recordAccept("agent_support");
+    push({
+      agentId: "agent_support",
+      role: "Support",
+      kind: "trust",
+      summary: "Clean handoff raised Support trust (earned autonomy).",
+    });
   }
 
-  await company.db
-    .update(agents)
-    .set({ maxAutonomousRisk: 3 })
-    .where(eq(agents.id, "agent_finance"));
-
+  // Finance uses seed prior accepts (maxRisk 3) — no scripted risk patch
   const finance = await runAgentTurn(company, provider, {
     agentId: "agent_finance",
     taskId,
@@ -141,6 +158,9 @@ export async function runCompanyDay(opts?: {
     tenantId: "default",
     systemPrompt: "You are Finance Agent for CorpOS.",
     userPrompt: "Settle the refund obligation and hand off to ops.",
+    originatingAuthority: "alice@corpos.local",
+    delegatedBy: "agent_support",
+    delegationDepth: 1,
   });
   if (finance.steps.some((s) => typeof s === "object" && s && "draftSettled" in s)) {
     autonomousSettles++;
@@ -169,8 +189,12 @@ export async function runCompanyDay(opts?: {
     tenantId: "default",
     systemPrompt: "You are Ops Agent for CorpOS.",
     userPrompt: "Restart billing-api if needed.",
+    originatingAuthority: "alice@corpos.local",
+    delegatedBy: "agent_finance",
+    delegationDepth: 2,
   });
 
+  const autoApprove = opts?.autoApproveException !== false;
   if (ops.awaitingExceptionId) {
     push({
       agentId: "agent_ops",
@@ -178,32 +202,28 @@ export async function runCompanyDay(opts?: {
       kind: "exception",
       summary: "Restart requires human approval — exception queued.",
     });
-    await decideException(company, ops.awaitingExceptionId, "approved", "carol@corpos.local");
-    const ex = (
-      await company.db.select().from(exceptions).where(eq(exceptions.id, ops.awaitingExceptionId))
-    )[0]!;
-    const tool = company.gateway.get(ex.tool)!;
-    await tool.execute(JSON.parse(ex.argsJson), {
-      agentId: "agent_ops",
-      taskId,
-      contractId,
-      tenantId: "default",
-    });
-    exceptionSettles++;
-    push({
-      agentId: "agent_ops",
-      role: "Ops",
-      kind: "exception",
-      summary: "Human approved restart; billing-api restarted.",
-    });
-    await company.trust.recordAccept("agent_support");
-    await company.trust.recordAccept("agent_support");
-    push({
-      agentId: "agent_support",
-      role: "Support",
-      kind: "trust",
-      summary: "Clean accepts raised Support maxAutonomousRisk.",
-    });
+    if (autoApprove) {
+      await decideException(company, ops.awaitingExceptionId, "approved", "carol@corpos.local");
+      exceptionSettles++;
+      push({
+        agentId: "agent_ops",
+        role: "Ops",
+        kind: "exception",
+        summary: "Human approved restart; billing-api restarted.",
+      });
+      await company.trust.recordAccept("agent_support");
+      push({
+        agentId: "agent_support",
+        role: "Support",
+        kind: "trust",
+        summary: "Clean accepts raised Support maxAutonomousRisk.",
+      });
+    } else {
+      void (await company.db
+        .select()
+        .from(exceptions)
+        .where(eq(exceptions.id, ops.awaitingExceptionId)));
+    }
   }
 
   const compensated = await company.gateway.compensate(contractId);
@@ -251,4 +271,10 @@ export async function runCompanyDay(opts?: {
     timeline,
   };
   return { company, result };
+}
+
+/** Probe helpers for governance gates */
+export async function assertFinancePriorAutonomy(company: Company): Promise<boolean> {
+  const fin = (await company.db.select().from(agents).where(eq(agents.id, "agent_finance")))[0];
+  return (fin?.maxAutonomousRisk ?? 0) >= 3 && (fin?.accepts ?? 0) >= 4;
 }
