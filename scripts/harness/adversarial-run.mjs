@@ -6,6 +6,7 @@ import {
   listSpans,
   resetSpans,
 } from "@corpos/core";
+import { buildApp } from "@corpos/api";
 import { eq } from "drizzle-orm";
 import fs from "node:fs";
 import path from "node:path";
@@ -18,6 +19,8 @@ function cell(id, ok, detail = "") {
   report.push({ id, ok, detail });
   if (!ok) throw new Error(`${id} failed: ${detail}`);
 }
+
+const DANGEROUS_TOOL_RE = /\b(shell|eval|exec|spawn|child_process|bash|powershell|os\.system)\b/i;
 
 // ASI02 / gateway bypass
 const bypass = await company.gateway.invoke(
@@ -37,13 +40,17 @@ cell(
   "unknown tool",
 );
 
-// ASI05 attestation — no shell/eval tools
-const aibomPath = path.resolve("docs/aibom.json");
-const aibom = JSON.parse(fs.readFileSync(aibomPath, "utf8"));
+// ASI05 — live tool registry scan (not AIBOM self-attestation alone)
+const registered = company.gateway.list();
+const dangerousLive = registered.filter(
+  (t) => DANGEROUS_TOOL_RE.test(t.name) || DANGEROUS_TOOL_RE.test(t.description ?? ""),
+);
 cell(
   "ASI05",
-  Array.isArray(aibom.dangerous_tools_registered) && aibom.dangerous_tools_registered.length === 0,
-  "no dangerous tools",
+  registered.length > 0 && dangerousLive.length === 0,
+  dangerousLive.length
+    ? `dangerous tools: ${dangerousLive.map((t) => t.name).join(",")}`
+    : "no shell/eval tools in live registry",
 );
 
 // ASI03 three-layer privilege expansion
@@ -127,6 +134,8 @@ cell("ASI01", untrusted, "KB marked untrusted");
 cell("ASI06", untrusted, "context poisoning boundary");
 
 // ASI04 AIBOM
+const aibomPath = path.resolve("docs/aibom.json");
+const aibom = JSON.parse(fs.readFileSync(aibomPath, "utf8"));
 cell("ASI04", Boolean(aibom.policyBundleHash) && Array.isArray(aibom.mcp_servers), "aibom");
 
 // ASI07 handoff envelope via deny missing originator
@@ -153,10 +162,35 @@ const email = await company.gateway.invoke(
 );
 cell("ASI09", email.decision.effect === "approve" && Boolean(email.decision.approvalId), "HITL");
 
-// Auth shared mode
+// AUTH — exercise real requireAuth via HTTP on /api/kill (shared mode)
+const prevMode = process.env.CORPOS_MODE;
+const prevToken = process.env.DASHBOARD_API_TOKEN;
 process.env.CORPOS_MODE = "shared";
 process.env.DASHBOARD_API_TOKEN = "secret";
-cell("AUTH", `Bearer ${process.env.DASHBOARD_API_TOKEN}` === "Bearer secret", "token");
+const app = buildApp(company, "simulation");
+const unauth = await app.request("/api/kill", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ killed: true }),
+});
+const authed = await app.request("/api/kill", {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    authorization: "Bearer secret",
+  },
+  body: JSON.stringify({ killed: false }),
+});
+if (prevMode === undefined) delete process.env.CORPOS_MODE;
+else process.env.CORPOS_MODE = prevMode;
+if (prevToken === undefined) delete process.env.DASHBOARD_API_TOKEN;
+else process.env.DASHBOARD_API_TOKEN = prevToken;
+const authedBody = await authed.json();
+cell(
+  "AUTH",
+  unauth.status === 401 && authed.status === 200 && authedBody.killed === false,
+  `unauth=${unauth.status} authed=${authed.status}`,
+);
 
 // Audit forge
 await company.audit.append("a", { n: 1 });
@@ -173,9 +207,13 @@ const { resolveProvider } = await import("@corpos/core");
 const resolved = resolveProvider(process.env);
 cell("HEALTH", resolved.mode === "simulation", "no live without allow");
 
-// OTel spans emitted on gateway
-void listSpans();
-cell("OTEL", true, "span buffer available");
+// OTel — require recorded spans from prior gateway invokes
+const spans = listSpans();
+cell(
+  "OTEL",
+  spans.some((s) => s.operation === "execute_tool" || s.operation === "invoke_agent"),
+  `spans=${spans.length}`,
+);
 
 company.close();
 console.log("adversarial: ok");

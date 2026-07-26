@@ -21,7 +21,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-function requireAuth(c: { req: { header: (n: string) => string | undefined } }): boolean {
+/** Dashboard bearer gate — exported for adversarial behavioral probes. */
+export function requireAuth(c: { req: { header: (n: string) => string | undefined } }): boolean {
   if (process.env.CORPOS_MODE !== "shared") return true;
   const expected = process.env.DASHBOARD_API_TOKEN?.trim();
   if (!expected) return false;
@@ -97,10 +98,11 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
   });
 
   app.post("/api/company-day", async (c) => {
-    let autoApproveException = true;
+    // Default off: do not imply human approval. Explicit body opt-in for demos/tests.
+    let autoApproveException = false;
     try {
       const body = await c.req.json<{ autoApproveException?: boolean }>();
-      if (body.autoApproveException === false) autoApproveException = false;
+      if (body.autoApproveException === true) autoApproveException = true;
     } catch {
       /* empty body */
     }

@@ -1,8 +1,45 @@
 {
   "schema": "corpos-site-delivery-receipt/v1",
   "program_id": "corpos-autonomous-company-r2",
-  "recorded_at": "2026-07-26T13:13:35.124777+00:00",
+  "site_id": "corpos",
+  "recorded_at": "2026-07-26T13:33:11.756553+00:00",
+  "captured_at": "2026-07-26T13:33:11.756553+00:00",
+  "node": "v26.4.0",
   "verify": "PASS",
   "adversarial": "PASS",
-  "notes": "Orchestrator + governance plane revision; shared firm store; ASI matrix."
+  "verification_scripts": "scripts/harness",
+  "verify_argv": ["./scripts/harness/verify.sh"],
+  "adversarial_argv": ["./scripts/harness/adversarial.sh"],
+  "verification_scripts_sha256": "8415380abcd32346db4a1c151dd4c063dddc58bb3f561780360c0eae62489538",
+  "harness_file_sha256": {
+    "adversarial-run.mjs": "3438da18530a0a6de798566eacd97a08456054edbedb026a0563e6475cae66fd",
+    "adversarial.sh": "c5c40ecb99ba3c5322d036ed7c6838a6f969e343003f5da3148a17288cb11d52",
+    "check-stub-canary.sh": "7bf1f3ceda1fa7e5f5feee2da0bbc17597c457ffa8b491801162ed8d05e59db5",
+    "verify.sh": "688518e9a148710768bb565525cac41c78a4092208069b6fea08825ed1483df8"
+  },
+  "surfaces": {
+    "firm_work_control": "packages/core/src",
+    "api": "apps/api/src",
+    "console": "apps/console/src",
+    "mcp_knowledge": "packages/mcp-knowledge/src",
+    "adrs": "docs/adr",
+    "essay": "docs/future-of-the-firm.md"
+  },
+  "company_day": {
+    "contractId": "ctr_g16siuyoYE",
+    "handoffs": 2,
+    "autonomousSettles": 1,
+    "exceptionSettles": 1,
+    "compensated": 1,
+    "trustAfter": 2,
+    "slaExceptions": 1,
+    "auditHead": "913d51c35e75fe4c148b6f893b2add53975564e8033874f24ce8be8737280e5e",
+    "ok": true
+  },
+  "adversarial_stdout": "adversarial: ok",
+  "stack_forbidden_absent": {
+    "better-sqlite3": true,
+    "express_import": true
+  },
+  "notes": "Harness effectiveness remediation: digest-bound probes/canary; behavioral AUTH/OTEL/ASI05; HITL auto-approve default off."
 }
