@@ -17,6 +17,8 @@ import {
 import { newId } from "./id.js";
 import { now, type ChatMessage, type LLMProvider, type ToolResult } from "./types.js";
 import type { Client } from "@libsql/client";
+import { endSpan, startSpan } from "./otel.js";
+import { Orchestrator } from "./orchestrator.js";
 
 export interface Company {
   client: Client;
@@ -25,6 +27,7 @@ export interface Company {
   policy: PolicyEngine;
   gateway: ToolGateway;
   trust: TrustLedger;
+  orchestrator?: Orchestrator;
   seed: {
     refunds: Array<{ id: string; amount: number; customer: string }>;
     messages: Array<{ to: string; body: string }>;
@@ -76,6 +79,7 @@ async function seedFirm(db: Db): Promise<void> {
       await db.insert(departments).values(d);
     }
   }
+  // Finance starts with prior earned autonomy (accepts≥4 → maxRisk 3) from historical clean days.
   const agentRows = [
     {
       id: "agent_support",
@@ -88,6 +92,7 @@ async function seedFirm(db: Db): Promise<void> {
       accepts: 0,
       rejects: 0,
       violations: 0,
+      active: 1,
     },
     {
       id: "agent_finance",
@@ -95,11 +100,12 @@ async function seedFirm(db: Db): Promise<void> {
       department: "finance",
       owner: "bob@corpos.local",
       principal: "finance-bot",
-      maxAutonomousRisk: 1,
-      trustScore: 0,
-      accepts: 0,
+      maxAutonomousRisk: 3,
+      trustScore: 4,
+      accepts: 4,
       rejects: 0,
       violations: 0,
+      active: 1,
     },
     {
       id: "agent_ops",
@@ -112,6 +118,7 @@ async function seedFirm(db: Db): Promise<void> {
       accepts: 0,
       rejects: 0,
       violations: 0,
+      active: 1,
     },
   ];
   for (const a of agentRows) {
@@ -136,6 +143,9 @@ export async function runAgentTurn(
     tenantId: string;
     systemPrompt: string;
     userPrompt: string;
+    originatingAuthority?: string;
+    delegatedBy?: string;
+    delegationDepth?: number;
   },
 ): Promise<{
   ok: boolean;
@@ -143,11 +153,26 @@ export async function runAgentTurn(
   summary?: string;
   steps: unknown[];
 }> {
+  const agent = (await company.db.select().from(agents).where(eq(agents.id, opts.agentId)))[0];
+  const span = startSpan("invoke_agent", `invoke_agent ${agent?.role ?? opts.agentId}`, {
+    "gen_ai.agent.name": agent?.role ?? opts.agentId,
+    "gen_ai.provider.name": provider.id,
+  });
+
   const steps: unknown[] = [];
   const messages: ChatMessage[] = [
     { role: "system", content: opts.systemPrompt },
     { role: "user", content: opts.userPrompt },
   ];
+  const baseCtx = {
+    agentId: opts.agentId,
+    taskId: opts.taskId,
+    contractId: opts.contractId,
+    tenantId: opts.tenantId,
+    originatingAuthority: opts.originatingAuthority ?? agent?.owner ?? "unknown",
+    delegatedBy: opts.delegatedBy,
+    delegationDepth: opts.delegationDepth ?? 0,
+  };
 
   for (let i = 0; i < 8; i++) {
     const response = await provider.complete({
@@ -168,16 +193,27 @@ export async function runAgentTurn(
         stepsJson: JSON.stringify(steps),
         createdAt: now(),
       });
+      endSpan(span);
       return { ok: true, summary, steps };
     }
     for (const call of response.toolCalls) {
+      let depth = baseCtx.delegationDepth;
+      let delegatedBy = baseCtx.delegatedBy;
+      if (call.name === "agent.handoff") {
+        depth = depth + 1;
+        delegatedBy = opts.agentId;
+      }
       const gw = await company.gateway.invoke(call.name, call.arguments, {
-        agentId: opts.agentId,
-        taskId: opts.taskId,
-        contractId: opts.contractId,
-        tenantId: opts.tenantId,
+        ...baseCtx,
+        delegatedBy,
+        delegationDepth: depth,
       });
-      steps.push({ tool: call.name, decision: gw.decision, result: gw.result });
+      steps.push({
+        tool: call.name,
+        decision: gw.decision,
+        result: gw.result,
+        decisionId: gw.decision.decisionId,
+      });
       if (gw.decision.effect === "approve" && gw.decision.approvalId) {
         await company.db
           .update(exceptions)
@@ -187,6 +223,9 @@ export async function runAgentTurn(
               toolCallId: call.id,
               tool: call.name,
               args: call.arguments,
+              agentId: opts.agentId,
+              depth,
+              delegatedBy,
             }),
           })
           .where(eq(exceptions.id, gw.decision.approvalId));
@@ -194,15 +233,19 @@ export async function runAgentTurn(
           .update(tasks)
           .set({ state: "awaiting_exception" })
           .where(eq(tasks.id, opts.taskId));
+        endSpan(span, { decisionId: gw.decision.decisionId });
         return { ok: false, awaitingExceptionId: gw.decision.approvalId, steps };
       }
-      if (gw.decision.effect === "draft" && gw.draftId) {
-        const settled = await company.gateway.settleDraft(gw.draftId, {
-          agentId: opts.agentId,
-          taskId: opts.taskId,
-          contractId: opts.contractId,
-          tenantId: opts.tenantId,
+      if (gw.decision.effect === "deny") {
+        messages.push({
+          role: "tool",
+          toolCallId: call.id,
+          content: gw.decision.reason,
         });
+        continue;
+      }
+      if (gw.decision.effect === "draft" && gw.draftId) {
+        const settled = await company.gateway.settleDraft(gw.draftId, baseCtx);
         messages.push({
           role: "tool",
           toolCallId: call.id,
@@ -211,6 +254,33 @@ export async function runAgentTurn(
         steps.push({ draftSettled: gw.draftId, result: settled });
         continue;
       }
+      if (call.name === "agent.handoff" && gw.result?.ok) {
+        const toAgent = String(call.arguments.toAgent ?? "");
+        const obligation = String(call.arguments.obligation ?? "");
+        const ctr = (
+          await company.db.select().from(contracts).where(eq(contracts.id, opts.contractId))
+        )[0];
+        if (ctr) {
+          const obligations = JSON.parse(ctr.obligations || "[]") as unknown[];
+          obligations.push({
+            toAgent,
+            obligation,
+            from: opts.agentId,
+            depth: depth,
+            originatingAuthority: baseCtx.originatingAuthority,
+          });
+          await company.db
+            .update(contracts)
+            .set({
+              obligations: JSON.stringify(obligations),
+              assignees: JSON.stringify(
+                Array.from(new Set([...JSON.parse(ctr.assignees || "[]"), toAgent])),
+              ),
+              updatedAt: now(),
+            })
+            .where(eq(contracts.id, opts.contractId));
+        }
+      }
       messages.push({
         role: "tool",
         toolCallId: call.id,
@@ -218,6 +288,7 @@ export async function runAgentTurn(
       });
     }
   }
+  endSpan(span);
   return { ok: false, summary: "max steps", steps };
 }
 
@@ -263,16 +334,54 @@ export async function decideException(
   exceptionId: string,
   decision: "approved" | "rejected",
   by: string,
-): Promise<void> {
+  dissentReason?: string,
+): Promise<{ resumed?: boolean; executed?: boolean }> {
   const ex = (await company.db.select().from(exceptions).where(eq(exceptions.id, exceptionId)))[0];
-  if (!ex || ex.state !== "pending") return;
-  await company.db
-    .update(exceptions)
-    .set({ state: decision, decidedAt: now(), decidedBy: by })
-    .where(eq(exceptions.id, exceptionId));
+  if (!ex || ex.state !== "pending") return {};
+  const patch: Record<string, unknown> = {
+    state: decision,
+    decidedAt: now(),
+    decidedBy: by,
+  };
+  if (decision === "rejected" && dissentReason) {
+    patch.dissentReason = dissentReason;
+  }
+  await company.db.update(exceptions).set(patch).where(eq(exceptions.id, exceptionId));
   if (decision === "approved") await company.trust.recordAccept(ex.agentId);
   else await company.trust.recordReject(ex.agentId);
-  await company.audit.append(`exception.${decision}`, { exceptionId, by });
+  await company.audit.append(`exception.${decision}`, {
+    exceptionId,
+    by,
+    dissentReason: dissentReason ?? null,
+  });
+
+  if (decision === "approved" && ex.pauseJson) {
+    const tool = company.gateway.get(ex.tool);
+    if (tool) {
+      await tool.execute(JSON.parse(ex.argsJson), {
+        agentId: ex.agentId,
+        taskId: ex.taskId,
+        contractId: ex.contractId,
+        tenantId: ex.tenantId,
+        originatingAuthority: by,
+        delegationDepth: 0,
+      });
+      await company.db
+        .update(tasks)
+        .set({ state: "done", finishedAt: now() })
+        .where(eq(tasks.id, ex.taskId));
+      company.orchestrator?.resume(ex.taskId, true);
+      return { resumed: true, executed: true };
+    }
+  } else if (decision === "rejected") {
+    await company.db
+      .update(tasks)
+      .set({ state: "failed", finishedAt: now(), error: "exception rejected" })
+      .where(eq(tasks.id, ex.taskId));
+    company.orchestrator?.resume(ex.taskId, false);
+    return { resumed: true, executed: false };
+  }
+  return {};
 }
 
 export async function checkSlaBreaches(company: Company): Promise<number> {

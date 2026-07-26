@@ -13,8 +13,8 @@ if (scenario) {
   process.exit(result.ok ? 0 : 1);
 }
 
-const company = await createDefaultCompany();
-const app = buildApp(company);
+const { company, mode } = await createDefaultCompany();
+const app = buildApp(company, mode);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const consoleDist = path.resolve(here, "../../console/dist");
@@ -22,5 +22,5 @@ app.use("/*", serveStatic({ root: consoleDist }));
 
 const port = Number(process.env.PORT ?? 3000);
 serve({ fetch: app.fetch, port }, () => {
-  console.log(`CorpOS ops console on http://localhost:${port}`);
+  console.log(`CorpOS ops console on http://localhost:${port} (mode=${mode})`);
 });

@@ -1,8 +1,8 @@
 {
   "schema": "corporate-site-site/v1",
   "site_id": "corpos",
-  "corporate_program": "corpos-autonomous-company",
-  "corporate_handoff_sha256": "0953f106918b8ffe1a61e30f3a69afbd0498bd44df695ff6b3c15c4b6915af68",
+  "corporate_program": "corpos-autonomous-company-r2",
+  "corporate_handoff_sha256": "15052d5905e7e73687465dbf6d1d801d31105a7c7abfd33ea50ceb2652dcbeb6",
   "verify_argv": ["./scripts/harness/verify.sh"],
   "adversarial_argv": ["./scripts/harness/adversarial.sh"]
 }

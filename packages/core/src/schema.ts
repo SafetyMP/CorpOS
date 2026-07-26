@@ -18,6 +18,8 @@ export const agents = sqliteTable("agents", {
   accepts: integer("accepts").notNull().default(0),
   rejects: integer("rejects").notNull().default(0),
   violations: integer("violations").notNull().default(0),
+  /** G1 membership: 1=active, 0=inactive */
+  active: integer("active").notNull().default(1),
 });
 
 export const contracts = sqliteTable("contracts", {
@@ -64,6 +66,8 @@ export const exceptions = sqliteTable("exceptions", {
   createdAt: text("created_at").notNull(),
   decidedAt: text("decided_at"),
   decidedBy: text("decided_by"),
+  /** G4 dissent / reject reason (never overwritten once set) */
+  dissentReason: text("dissent_reason"),
   pauseJson: text("pause_json"),
 });
 

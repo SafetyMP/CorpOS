@@ -50,6 +50,7 @@ describe("company day", () => {
 
   it("trust mapping and counterfactual diffs", () => {
     expect(computeMaxAutonomousRisk({ accepts: 2, rejects: 0, violations: 0 })).toBe(2);
+    expect(computeMaxAutonomousRisk({ accepts: 4, rejects: 0, violations: 0 })).toBe(3);
     expect(computeMaxAutonomousRisk({ accepts: 0, rejects: 3, violations: 0 })).toBe(0);
     const diffs = counterfactualReplay(
       [{ tool: "crm.lookup", decision: { effect: "allow", reason: "ok" } }],

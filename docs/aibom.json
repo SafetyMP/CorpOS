@@ -1,0 +1,33 @@
+{
+  "schema": "corpos-aibom/v1",
+  "program_id": "corpos-autonomous-company-r2",
+  "generated": "2026-07-26",
+  "policyBundleHash": "rego-shaped-three-layer-v1",
+  "agents": [
+    { "id": "agent_support", "role": "Support Agent", "model": "simulation|live" },
+    { "id": "agent_finance", "role": "Finance Agent", "model": "simulation|live" },
+    { "id": "agent_ops", "role": "Ops Agent", "model": "simulation|live" }
+  ],
+  "models": [
+    { "id": "simulation", "provider": "SimulationProvider" },
+    { "id": "openrouter", "provider": "HttpLLMProvider", "optional": true }
+  ],
+  "tools": [
+    "crm.lookup",
+    "knowledge.search",
+    "billing.issue_refund",
+    "billing.reverse_refund",
+    "comms.send_email",
+    "ops.restart_service",
+    "ops.mark_incident",
+    "agent.handoff"
+  ],
+  "mcp_servers": [
+    {
+      "id": "mcp-knowledge",
+      "package": "@corpos/mcp-knowledge",
+      "transport": "stdio"
+    }
+  ],
+  "dangerous_tools_registered": []
+}
