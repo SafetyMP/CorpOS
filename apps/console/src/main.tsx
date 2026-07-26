@@ -113,7 +113,7 @@ function App() {
       const r = (await fetch("/api/company-day", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ autoApproveException: true }),
+        body: JSON.stringify({ autoApproveException: false }),
       }).then((res) => res.json())) as CompanyDay;
       setDay(r);
       await refresh();

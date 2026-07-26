@@ -10,7 +10,10 @@ import {
 
 describe("company day", () => {
   it("runs multi-handoff day with autonomy, exception, compensation, sla, trust", async () => {
-    const { company, result } = await runCompanyDay({ dbPath: ":memory:" });
+    const { company, result } = await runCompanyDay({
+      dbPath: ":memory:",
+      autoApproveException: true,
+    });
     expect(result.handoffs).toBeGreaterThanOrEqual(2);
     expect(result.autonomousSettles).toBeGreaterThanOrEqual(1);
     expect(result.exceptionSettles).toBeGreaterThanOrEqual(1);
@@ -27,6 +30,14 @@ describe("company day", () => {
     expect(kinds).toContain("trust");
     const verify = await company.audit.verify();
     expect(verify.ok).toBe(true);
+    company.close();
+  });
+
+  it("does not auto-approve exceptions by default", async () => {
+    const { company, result } = await runCompanyDay({ dbPath: ":memory:" });
+    expect(result.exceptionSettles).toBe(0);
+    expect(result.timeline.some((e) => e.summary.includes("Human approved"))).toBe(false);
+    expect(result.timeline.some((e) => e.summary.includes("Demo auto-approved"))).toBe(false);
     company.close();
   });
 

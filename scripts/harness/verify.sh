@@ -164,9 +164,13 @@ if pending:
 PY
 }
 
-if [[ -x ./scripts/check-stub-canary.sh ]]; then
-  ./scripts/check-stub-canary.sh
+# Mandatory stub canary (digest-bound companion under scripts/harness).
+CANARY="./scripts/harness/check-stub-canary.sh"
+if [[ ! -x "${CANARY}" ]]; then
+  echo "verify: missing executable ${CANARY}" >&2
+  exit 1
 fi
+"${CANARY}"
 
 acquire_lock
 resolve_npm

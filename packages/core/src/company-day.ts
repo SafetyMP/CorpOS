@@ -50,7 +50,10 @@ export async function runCompanyDay(opts?: {
   company?: Company;
   withMcp?: boolean;
   serverCommand?: { command: string; args: string[] };
-  /** Auto-approve ops exception for deterministic CI (console can decide manually). */
+  /**
+   * Explicit opt-in only. Default false so demo/API paths do not imply human
+   * approval. Tests/CI that need a settled exception must pass true.
+   */
   autoApproveException?: boolean;
 }): Promise<{ company: Company; result: CompanyDayResult }> {
   resetSpans();
@@ -194,7 +197,7 @@ export async function runCompanyDay(opts?: {
     delegationDepth: 2,
   });
 
-  const autoApprove = opts?.autoApproveException !== false;
+  const autoApprove = opts?.autoApproveException === true;
   if (ops.awaitingExceptionId) {
     push({
       agentId: "agent_ops",
@@ -209,7 +212,7 @@ export async function runCompanyDay(opts?: {
         agentId: "agent_ops",
         role: "Ops",
         kind: "exception",
-        summary: "Human approved restart; billing-api restarted.",
+        summary: "Demo auto-approved restart (explicit opt-in); billing-api restarted.",
       });
       await company.trust.recordAccept("agent_support");
       push({

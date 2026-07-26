@@ -13,7 +13,7 @@ Pedagogical mapping only — **not** a certification claim.
 
 ## OWASP Top 10 for Agentic Applications 2026
 
-See Governor `/api/governance` and `scripts/adversarial-run.mjs` ASI cells.
+See Governor `/api/governance` and `scripts/harness/adversarial-run.mjs` ASI cells.
 
 ## Related standards
 
