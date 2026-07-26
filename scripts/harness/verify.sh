@@ -1,20 +1,180 @@
 #!/usr/bin/env bash
+# Definition of Done — mirrors CI (build, typecheck, test, lint, format, stack guards).
+# Supply-chain: lockfile install, enforceable allowScripts (npm >= 11.16), no verify-time
+# package-manager download via npx, no unconditional node_modules wipe.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
+
+LOCK_DIR="${ROOT}/.corp-harness/verify.lock"
+LOCK_WAIT_SECONDS="${CORPOS_VERIFY_LOCK_WAIT_SECONDS:-600}"
+VERIFY_LOCK_HELD=""
+
+cleanup_lock() {
+  if [[ -n "${VERIFY_LOCK_HELD}" ]]; then
+    rmdir "${LOCK_DIR}" 2>/dev/null || true
+  fi
+}
+trap cleanup_lock EXIT INT TERM
+
+acquire_lock() {
+  mkdir -p "${ROOT}/.corp-harness"
+  local waited=0
+  while ! mkdir "${LOCK_DIR}" 2>/dev/null; do
+    if (( waited >= LOCK_WAIT_SECONDS )); then
+      echo "verify: timed out waiting for ${LOCK_DIR} (another verify is running)" >&2
+      exit 1
+    fi
+    echo "verify: waiting for lock (${waited}s)..."
+    sleep 2
+    waited=$((waited + 2))
+  done
+  VERIFY_LOCK_HELD=1
+}
+
+activate_package_manager() {
+  # Prefer Corepack pin from package.json; never npx-fetch npm at verify time.
+  if command -v corepack >/dev/null 2>&1; then
+    corepack enable >/dev/null 2>&1 || true
+    corepack prepare npm@11.17.0 --activate >/dev/null 2>&1 || true
+  fi
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "verify: npm not on PATH" >&2
+    exit 1
+  fi
+  local major
+  major="$(npm -v | cut -d. -f1)"
+  if (( major < 11 )); then
+    echo "verify: npm $(npm -v) is too old; need >= 11.16 for allowScripts / strict-allow-scripts" >&2
+    echo "verify: enable Corepack and retry (packageManager npm@11.17.0)" >&2
+    exit 1
+  fi
+}
+
+clean_install_tree() {
+  echo "==> clean node_modules"
+  rm -rf "${ROOT}/node_modules"
+  local d
+  for d in "${ROOT}/apps"/*/node_modules "${ROOT}/packages"/*/node_modules; do
+    [[ -d "${d}" ]] && rm -rf "${d}"
+  done
+}
+
+install_deps() {
+  echo "==> npm ci (lockfile + devDependencies)"
+  # Host NODE_ENV=production would omit typescript/vitest/eslint.
+  if ! env -u NODE_ENV npm ci --include=dev; then
+    echo "verify: npm ci failed; cleaning tree and retrying once" >&2
+    clean_install_tree
+    env -u NODE_ENV npm ci --include=dev
+  fi
+}
+
+ensure_tsc_bin() {
+  local ts_bin="${ROOT}/node_modules/typescript/bin/tsc"
+  if [[ ! -f "${ts_bin}" ]]; then
+    echo "verify: typescript missing after install (devDependency failed)" >&2
+    exit 1
+  fi
+  mkdir -p "${ROOT}/node_modules/.bin"
+  if [[ ! -e "${ROOT}/node_modules/.bin/tsc" ]]; then
+    ln -sfn "../typescript/bin/tsc" "${ROOT}/node_modules/.bin/tsc"
+  fi
+  if [[ ! -e "${ROOT}/node_modules/.bin/tsserver" ]]; then
+    ln -sfn "../typescript/bin/tsserver" "${ROOT}/node_modules/.bin/tsserver"
+  fi
+  export PATH="${ROOT}/node_modules/.bin:${PATH}"
+  if ! command -v tsc >/dev/null 2>&1; then
+    echo "verify: tsc not on PATH after install" >&2
+    exit 1
+  fi
+}
+
+check_typescript_lock_bind() {
+  python3 - <<'PY'
+import json, re, sys
+from pathlib import Path
+
+lock = json.loads(Path("package-lock.json").read_text())
+entry = lock.get("packages", {}).get("node_modules/typescript")
+if not entry:
+    print("verify: typescript missing from package-lock.json", file=sys.stderr)
+    sys.exit(1)
+expected = entry["integrity"]
+version = entry["version"]
+installed = json.loads(Path("node_modules/typescript/package.json").read_text()).get("version")
+if installed != version:
+    print(f"verify: typescript version mismatch installed={installed} lock={version}", file=sys.stderr)
+    sys.exit(1)
+if not re.fullmatch(r"sha512-[A-Za-z0-9+/=]+", expected):
+    print(f"verify: unexpected typescript integrity field: {expected}", file=sys.stderr)
+    sys.exit(1)
+print(f"verify: typescript@{version} lock bind ok")
+PY
+}
+
+check_allow_scripts() {
+  # Fail if any install-script package is outside package.json allowScripts.
+  if ! npm approve-scripts --allow-scripts-pending --json >/tmp/corpos-allow-scripts.json 2>/tmp/corpos-allow-scripts.err; then
+    # Older npm 11 builds may lack --json; fall back to text.
+    if ! npm approve-scripts --allow-scripts-pending >/tmp/corpos-allow-scripts.txt 2>/tmp/corpos-allow-scripts.err; then
+      cat /tmp/corpos-allow-scripts.err >&2 || true
+      echo "verify: npm approve-scripts failed (is npm >= 11.16?)" >&2
+      exit 1
+    fi
+    if rg -q '[^[:space:]]' /tmp/corpos-allow-scripts.txt && ! rg -qi 'no packages|0 packages|nothing pending|all scripts' /tmp/corpos-allow-scripts.txt; then
+      echo "verify: pending install scripts not covered by allowScripts:" >&2
+      cat /tmp/corpos-allow-scripts.txt >&2
+      exit 1
+    fi
+    return 0
+  fi
+  python3 - <<'PY'
+import json, sys
+from pathlib import Path
+raw = Path("/tmp/corpos-allow-scripts.json").read_text().strip()
+if not raw:
+    sys.exit(0)
+data = json.loads(raw)
+pending = data
+if isinstance(data, dict):
+    # npm 11.17: --allow-scripts-pending --json -> {"allowScripts": [...pending]}
+    pending = (
+        data.get("pending")
+        or data.get("packages")
+        or data.get("allowScriptsPending")
+        or data.get("allowScripts")
+        or []
+    )
+if pending:
+    print("verify: pending install scripts not covered by allowScripts:", file=sys.stderr)
+    print(json.dumps(pending, indent=2), file=sys.stderr)
+    sys.exit(1)
+PY
+}
 
 if [[ -x ./scripts/check-stub-canary.sh ]]; then
   ./scripts/check-stub-canary.sh
 fi
 
-if command -v corepack >/dev/null 2>&1; then
-  corepack enable >/dev/null 2>&1 || true
-  corepack prepare npm@10.9.2 --activate >/dev/null 2>&1 || true
+acquire_lock
+activate_package_manager
+
+if [[ "${CORPOS_VERIFY_CLEAN:-}" == "1" ]]; then
+  clean_install_tree
+  install_deps
+elif [[ ! -f "${ROOT}/node_modules/typescript/bin/tsc" ]]; then
+  install_deps
+elif [[ ! -e "${ROOT}/node_modules/.bin/tsc" ]]; then
+  # Partial tree — repair via reinstall rather than hoping symlinks alone suffice.
+  install_deps
+else
+  echo "==> reuse node_modules (set CORPOS_VERIFY_CLEAN=1 to force npm ci)"
 fi
 
-echo "==> npm ci"
-env -u NODE_ENV npm ci --include=dev
-export PATH="${ROOT}/node_modules/.bin:${PATH}"
+ensure_tsc_bin
+check_typescript_lock_bind
+check_allow_scripts
 
 echo "==> build"
 npm run build
@@ -25,7 +185,7 @@ npm run test
 npm run lint
 npm run format:check
 
-# Guardrails
+# Stack guardrails
 if rg -n "from ['\"]express['\"]|require\\(['\"]express['\"]\\)" apps packages --glob '!**/node_modules/**' >/dev/null 2>&1; then
   echo "verify: Express import forbidden" >&2
   exit 1

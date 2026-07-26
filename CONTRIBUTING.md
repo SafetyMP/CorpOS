@@ -21,14 +21,16 @@ Please also follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 ## Prerequisites
 
 - **Node.js ≥ 22** (see [`.nvmrc`](.nvmrc); CI covers 22 and 24).
-- npm **10.9.2** via Corepack (`packageManager` in [`package.json`](package.json)).
+- npm **11.17.0** via Corepack (`packageManager` in [`package.json`](package.json)).
+  Required for enforceable `allowScripts` / `strict-allow-scripts`.
 
 ## Setup
 
 ```bash
-npm install
+npm ci --include=dev
 npm run build
-./scripts/harness/verify.sh   # typecheck · test · lint · format:check · stack guards
+./scripts/harness/verify.sh   # build · typecheck · test · lint · format · stack guards
+# Force a clean reinstall (CI does this): CORPOS_VERIFY_CLEAN=1 ./scripts/harness/verify.sh
 ```
 
 A contribution is not finished until `./scripts/harness/verify.sh` is green

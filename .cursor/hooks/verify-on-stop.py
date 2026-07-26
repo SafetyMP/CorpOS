@@ -10,7 +10,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import read_input, emit, log_event, resolve_workspace_root  # noqa: E402
 
-TIMEOUT = 120
+# Full clean+ci verify can exceed 2m; default verify reuses node_modules.
+TIMEOUT = 300
 VERIFY_SCRIPT = "scripts/verify.sh"
 
 
