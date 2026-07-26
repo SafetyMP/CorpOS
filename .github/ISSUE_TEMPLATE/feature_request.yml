@@ -1,0 +1,59 @@
+name: Feature Request
+description: Propose a capability aligned with the autonomous-company reference
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the [thesis](https://github.com/SafetyMP/CorpOS/blob/main/docs/future-of-the-firm.md) and
+        [ADRs](https://github.com/SafetyMP/CorpOS/tree/main/docs/adr) before filing.
+        CorpOS stays a reference architecture — proposals that imply production SaaS
+        hardening should say so explicitly.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - packages/core (firm / policy / trust / audit)
+        - packages/mcp-knowledge
+        - apps/api
+        - apps/console
+        - harness / CI / supply chain
+        - docs / ADRs
+        - Unsure / needs triage
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem does this solve for the reference demo or architecture story?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: High-level approach; link an ADR or issue if applicable
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope checklist
+      options:
+        - label: I understand CorpOS is a reference implementation, not production SaaS
+          required: true
+        - label: I am willing to include tests or harness updates if applicable
+          required: false

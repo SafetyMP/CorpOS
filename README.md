@@ -2,12 +2,40 @@
 
 > Reference implementation of an **autonomous company** — firm model, work contracts, and a policy-gated control plane.
 
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%E2%89%A5%2022-green.svg)](package.json)
+[![CI](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://github.com/SafetyMP/CorpOS/actions/workflows/scorecard.yml/badge.svg?branch=main)](https://scorecard.dev/viewer/?uri=github.com/SafetyMP/CorpOS)
+[![License: Apache-2.0](https://img.shields.io/github/license/SafetyMP/CorpOS)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)](#quick-start)
 
 CorpOS shows how a firm operates when department agents do most work and **humans govern by exception**. Autonomy is earned from evidence, not granted in prompts.
 
+> **Scope:** Reference architecture and runnable demo — **not** a production-hardened SaaS. See [SECURITY.md](SECURITY.md).
+
 Read the thesis: [`docs/future-of-the-firm.md`](docs/future-of-the-firm.md).
+
+**Jump to:** [Demo](#demo) · [Quick start](#quick-start) · [Architecture](#architecture) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [ADRs](docs/adr/)
+
+---
+
+## Demo
+
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="CorpOS ops console — capital and trust, company day result, and Governor audit controls (synthetic demo data)" width="900" />
+</p>
+
+### Screenshots
+
+|             Ops             |               Company day               |               Governor                |
+| :-------------------------: | :-------------------------------------: | :-----------------------------------: |
+| ![Ops](docs/assets/ops.png) | ![Company day](docs/assets/ops-day.png) | ![Governor](docs/assets/governor.png) |
+
+- **Local demo:** `npm install && npm run build && npm run dev` → [http://localhost:3000](http://localhost:3000)
+- **Regenerate GIF/PNGs:** start the console, then `npm run screenshots` — see [`docs/assets/README.md`](docs/assets/README.md)
+
+Click **Run company day** for the multi-handoff demo (support → finance → ops), including an autonomous settle, an exception approval path, compensation, and trust unlock.
+
+---
 
 ## Quick start
 
@@ -17,12 +45,11 @@ npm run build
 npm run dev        # ops console on $PORT or 3000
 ```
 
-Click **Run company day** for the multi-handoff demo (support → finance → ops), including an autonomous settle, an exception approval path, compensation, and trust unlock.
-
 ```bash
 npm test
 npm run scenario
 npm run audit:verify
+./scripts/harness/verify.sh
 ```
 
 ## Architecture
@@ -36,9 +63,15 @@ npm run audit:verify
 
 Stack: Node ≥22 · TypeScript · npm workspaces · Hono · Drizzle + libsql · official MCP SDK · Preact. No Express, no `better-sqlite3`, no agent-framework lock-in.
 
+Architecture decisions live in [`docs/adr/`](docs/adr/).
+
 ## Security
 
 Reference architecture — not production-hardened. Set `CORPOS_MODE=shared` and `DASHBOARD_API_TOKEN` before exposing approvals. See [SECURITY.md](SECURITY.md).
+
+## Community
+
+[Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security](SECURITY.md) · [ADRs](docs/adr/)
 
 ## License
 

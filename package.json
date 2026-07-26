@@ -25,7 +25,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "audit:verify": "tsx scripts/audit-verify.ts"
+    "audit:verify": "tsx scripts/audit-verify.ts",
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "screenshots:rebuild-gif": "node scripts/capture-screenshots.mjs --from-existing"
   },
   "dependencies": {
     "@corpos/core": "0.2.0",
@@ -36,7 +38,10 @@
     "@types/node": "^22.15.30",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
+    "gifenc": "^1.0.3",
     "globals": "^17.7.0",
+    "playwright": "^1.52.0",
+    "pngjs": "^7.0.0",
     "prettier": "^3.9.3",
     "tsx": "^4.23.0",
     "typescript": "^5.8.3",
