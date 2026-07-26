@@ -4,14 +4,16 @@ import {
   createCompany,
   decideException,
   openContract,
-  runAgentTurn,
   type Company,
 } from "./company.js";
-import { SimulationProvider, tc } from "./llm.js";
-import { agents, contracts, exceptions } from "./schema.js";
+import { resolveProvider, SimulationProvider, tc } from "./llm.js";
+import { agents, contracts, exceptions, tasks } from "./schema.js";
 import { mcpKnowledgeSearch } from "./mcp-client.js";
 import { Orchestrator } from "./orchestrator.js";
 import { resetSpans } from "./otel.js";
+import { clearFirmEvents, publishFirmEvent } from "./events.js";
+import { newId } from "./id.js";
+import { now, type LLMProvider } from "./types.js";
 
 export type TimelineKind =
   "intake" | "handoff" | "autonomous_settle" | "exception" | "compensate" | "trust" | "sla";
@@ -35,6 +37,7 @@ export interface CompanyDayResult {
   auditHead: string;
   ok: boolean;
   timeline: TimelineEvent[];
+  providerMode: "simulation" | "live";
 }
 
 function countHandoffs(steps: unknown[]): number {
@@ -44,32 +47,46 @@ function countHandoffs(steps: unknown[]): number {
   ).length;
 }
 
-export async function runCompanyDay(opts?: {
-  dbPath?: string;
-  /** Reuse an existing company (shared firm store with console). */
-  company?: Company;
-  withMcp?: boolean;
-  serverCommand?: { command: string; args: string[] };
-  /**
-   * Explicit opt-in only. Default false so demo/API paths do not imply human
-   * approval. Tests/CI that need a settled exception must pass true.
-   */
-  autoApproveException?: boolean;
-}): Promise<{ company: Company; result: CompanyDayResult }> {
-  resetSpans();
-  const mcpInvoke = opts?.withMcp
-    ? async (name: string, args: Record<string, unknown>) => {
-        if (name === "knowledge.search") {
-          return mcpKnowledgeSearch(String(args.query ?? ""), opts.serverCommand);
-        }
-        return { ok: false, error: "not mcp" };
-      }
-    : undefined;
+async function latestHandoff(
+  company: Company,
+  contractId: string,
+): Promise<{ toAgent: string; obligation: string; from: string } | null> {
+  const ctr = (await company.db.select().from(contracts).where(eq(contracts.id, contractId)))[0];
+  if (!ctr) return null;
+  const obligations = JSON.parse(ctr.obligations || "[]") as Array<{
+    toAgent: string;
+    obligation: string;
+    from: string;
+  }>;
+  return obligations.length ? obligations[obligations.length - 1]! : null;
+}
 
-  const company =
-    opts?.company ?? (await createCompany({ dbPath: opts?.dbPath ?? ":memory:", mcpInvoke }));
+async function enqueueAgentTask(
+  company: Company,
+  opts: {
+    contractId: string;
+    agentId: string;
+    title: string;
+    description: string;
+  },
+): Promise<string> {
+  const taskId = newId("task");
+  await company.db.insert(tasks).values({
+    id: taskId,
+    contractId: opts.contractId,
+    tenantId: "default",
+    title: opts.title,
+    description: opts.description,
+    state: "queued",
+    assignedTo: opts.agentId,
+    attempts: 0,
+    createdAt: now(),
+  });
+  return taskId;
+}
 
-  const provider = new SimulationProvider({
+function dayScripts(): Record<string, ReturnType<typeof tc>[][]> {
+  return {
     "Support Agent": [
       [tc("crm.lookup", { email: "ada@example.com" })],
       [tc("knowledge.search", { query: "refund" })],
@@ -96,18 +113,70 @@ export async function runCompanyDay(opts?: {
       ],
     ],
     "Ops Agent": [[tc("ops.restart_service", { service: "billing-api" })]],
-  });
+  };
+}
 
-  company.orchestrator = new Orchestrator(company, { provider, concurrency: 2 });
+export async function runCompanyDay(opts?: {
+  dbPath?: string;
+  /** Reuse an existing company (shared firm store with console). */
+  company?: Company;
+  withMcp?: boolean;
+  serverCommand?: { command: string; args: string[] };
+  /**
+   * Explicit opt-in only. Default false so demo/API paths do not imply human
+   * approval. Tests/CI that need a settled exception must pass true.
+   */
+  autoApproveException?: boolean;
+  /** Override provider (tests). When omitted, live uses resolveProvider else scripted sim. */
+  provider?: LLMProvider;
+}): Promise<{ company: Company; result: CompanyDayResult }> {
+  resetSpans();
+  clearFirmEvents();
+  const mcpInvoke = opts?.withMcp
+    ? async (name: string, args: Record<string, unknown>) => {
+        if (name === "knowledge.search") {
+          return mcpKnowledgeSearch(String(args.query ?? ""), opts.serverCommand);
+        }
+        return { ok: false, error: "not mcp" };
+      }
+    : undefined;
+
+  const company =
+    opts?.company ?? (await createCompany({ dbPath: opts?.dbPath ?? ":memory:", mcpInvoke }));
+
+  let provider: LLMProvider;
+  let providerMode: "simulation" | "live" = "simulation";
+  if (opts?.provider) {
+    provider = opts.provider;
+    providerMode = provider.id === "live" ? "live" : "simulation";
+  } else {
+    const resolved = resolveProvider();
+    if (resolved.mode === "live") {
+      provider = resolved.provider;
+      providerMode = "live";
+    } else {
+      provider = new SimulationProvider(dayScripts());
+      providerMode = "simulation";
+    }
+  }
+
+  const autoApprove = opts?.autoApproveException === true;
+  company.orchestrator = new Orchestrator(company, {
+    provider,
+    concurrency: 2,
+    awaitHitl: autoApprove,
+  });
 
   const timeline: TimelineEvent[] = [];
   let seq = 0;
   const push = (event: Omit<TimelineEvent, "id">) => {
     seq += 1;
-    timeline.push({ id: `evt_${seq}`, ...event });
+    const full = { id: `evt_${seq}`, ...event };
+    timeline.push(full);
+    publishFirmEvent("timeline", { ...full });
   };
 
-  const { contractId, taskId } = await openContract(company, {
+  const { contractId, taskId: supportTaskId } = await openContract(company, {
     title: "Customer refund day",
     intake: "ada@example.com wants a $49 refund on sub_ada_pro",
     assignees: ["agent_support", "agent_finance", "agent_ops"],
@@ -124,17 +193,7 @@ export async function runCompanyDay(opts?: {
   let autonomousSettles = 0;
   let exceptionSettles = 0;
 
-  const support = await runAgentTurn(company, provider, {
-    agentId: "agent_support",
-    taskId,
-    contractId,
-    tenantId: "default",
-    systemPrompt: "You are Support Agent for CorpOS.",
-    userPrompt: "Handle the refund intake and hand off to finance.",
-    originatingAuthority: "alice@corpos.local",
-    delegationDepth: 0,
-  });
-
+  const support = await company.orchestrator.enqueueAndRun(supportTaskId);
   const supportHandoffs = countHandoffs(support.steps);
   handoffs += supportHandoffs;
   if (supportHandoffs > 0) {
@@ -153,18 +212,14 @@ export async function runCompanyDay(opts?: {
     });
   }
 
-  // Finance uses seed prior accepts (maxRisk 3) — no scripted risk patch
-  const finance = await runAgentTurn(company, provider, {
-    agentId: "agent_finance",
-    taskId,
+  const finHandoff = await latestHandoff(company, contractId);
+  const financeTaskId = await enqueueAgentTask(company, {
     contractId,
-    tenantId: "default",
-    systemPrompt: "You are Finance Agent for CorpOS.",
-    userPrompt: "Settle the refund obligation and hand off to ops.",
-    originatingAuthority: "alice@corpos.local",
-    delegatedBy: "agent_support",
-    delegationDepth: 1,
+    agentId: "agent_finance",
+    title: "Settle refund",
+    description: finHandoff?.obligation ?? "Settle the refund obligation and hand off to ops.",
   });
+  const finance = await company.orchestrator.enqueueAndRun(financeTaskId);
   if (finance.steps.some((s) => typeof s === "object" && s && "draftSettled" in s)) {
     autonomousSettles++;
     push({
@@ -185,43 +240,62 @@ export async function runCompanyDay(opts?: {
     });
   }
 
-  const ops = await runAgentTurn(company, provider, {
-    agentId: "agent_ops",
-    taskId,
+  const opsHandoff = await latestHandoff(company, contractId);
+  const opsTaskId = await enqueueAgentTask(company, {
     contractId,
-    tenantId: "default",
-    systemPrompt: "You are Ops Agent for CorpOS.",
-    userPrompt: "Restart billing-api if needed.",
-    originatingAuthority: "alice@corpos.local",
-    delegatedBy: "agent_finance",
-    delegationDepth: 2,
+    agentId: "agent_ops",
+    title: "Confirm service health",
+    description: opsHandoff?.obligation ?? "Restart billing-api if needed.",
   });
 
-  const autoApprove = opts?.autoApproveException === true;
-  if (ops.awaitingExceptionId) {
-    push({
-      agentId: "agent_ops",
-      role: "Ops",
-      kind: "exception",
-      summary: "Restart requires human approval — exception queued.",
-    });
-    if (autoApprove) {
-      await decideException(company, ops.awaitingExceptionId, "approved", "carol@corpos.local");
-      exceptionSettles++;
+  let opsPromise: Promise<{
+    ok: boolean;
+    awaitingExceptionId?: string;
+    steps: unknown[];
+  }>;
+
+  if (autoApprove) {
+    opsPromise = company.orchestrator.enqueueAndRun(opsTaskId);
+    for (let i = 0; i < 200; i++) {
+      const pending = (await company.db.select().from(exceptions)).find(
+        (e) => e.state === "pending" && e.taskId === opsTaskId,
+      );
+      if (pending) {
+        push({
+          agentId: "agent_ops",
+          role: "Ops",
+          kind: "exception",
+          summary: "Restart requires human approval — exception queued.",
+        });
+        await decideException(company, pending.id, "approved", "carol@corpos.local");
+        exceptionSettles++;
+        push({
+          agentId: "agent_ops",
+          role: "Ops",
+          kind: "exception",
+          summary: "Demo auto-approved restart (explicit opt-in); billing-api restarted.",
+        });
+        await company.trust.recordAccept("agent_support");
+        push({
+          agentId: "agent_support",
+          role: "Support",
+          kind: "trust",
+          summary: "Clean accepts raised Support maxAutonomousRisk.",
+        });
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    await opsPromise;
+  } else {
+    const ops = await company.orchestrator.enqueueAndRun(opsTaskId);
+    if (ops.awaitingExceptionId) {
       push({
         agentId: "agent_ops",
         role: "Ops",
         kind: "exception",
-        summary: "Demo auto-approved restart (explicit opt-in); billing-api restarted.",
+        summary: "Restart requires human approval — exception queued.",
       });
-      await company.trust.recordAccept("agent_support");
-      push({
-        agentId: "agent_support",
-        role: "Support",
-        kind: "trust",
-        summary: "Clean accepts raised Support maxAutonomousRisk.",
-      });
-    } else {
       void (await company.db
         .select()
         .from(exceptions)
@@ -272,6 +346,7 @@ export async function runCompanyDay(opts?: {
     auditHead: await company.audit.head(),
     ok: handoffs >= 2 && autonomousSettles >= 1 && exceptionSettles >= 1 && trustAfter >= 2,
     timeline,
+    providerMode,
   };
   return { company, result };
 }

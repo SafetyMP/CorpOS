@@ -3,18 +3,25 @@ import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import {
   agents,
+  appealException,
   contracts,
   controlState,
   counterfactualReplay,
   createCompany,
   decideException,
+  deliberationEntries,
   departments,
   exceptions,
+  expireExceptionTtl,
   listSpans,
   resolveProvider,
   runCompanyDay,
+  subscribeFirmEvents,
+  recentFirmEvents,
+  transparencyRecords,
   traces,
   type Company,
+  type EnforcementMode,
 } from "@corpos/core";
 import { eq } from "drizzle-orm";
 import fs from "node:fs";
@@ -45,12 +52,18 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
   const app = new Hono();
   app.use("*", cors());
 
+  const envMode = process.env.CORPOS_ENFORCEMENT;
+  if (envMode === "strict" || envMode === "audit") {
+    company.policy.setEnforcementMode(envMode);
+  }
+
   app.get("/api/health", (c) =>
     c.json({
       ok: true,
       mode,
       product: "autonomous-company-reference",
       provider: mode === "live" ? "HttpLLMProvider" : "SimulationProvider",
+      enforcement: company.policy.getEnforcementMode(),
     }),
   );
 
@@ -73,8 +86,17 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
     c.json((await company.db.select().from(exceptions)).filter((e) => e.state === "pending")),
   );
 
+  app.get("/api/exceptions/:id/deliberation", async (c) => {
+    const rows = await company.db
+      .select()
+      .from(deliberationEntries)
+      .where(eq(deliberationEntries.exceptionId, c.req.param("id")));
+    return c.json(rows);
+  });
+
   app.post("/api/exceptions/:id/decide", async (c) => {
     if (!requireAuth(c)) return c.json({ error: "dashboard authentication required" }, 401);
+    await expireExceptionTtl(company);
     const body = await c.req.json<{
       decision: "approved" | "rejected";
       by?: string;
@@ -90,6 +112,19 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
     return c.json({ ok: true, ...out });
   });
 
+  app.post("/api/exceptions/:id/appeal", async (c) => {
+    if (!requireAuth(c)) return c.json({ error: "dashboard authentication required" }, 401);
+    const body = await c.req.json<{ by?: string; reason?: string }>();
+    const out = await appealException(
+      company,
+      c.req.param("id"),
+      body.by ?? "operator",
+      body.reason ?? "appeal",
+    );
+    if (!out.ok) return c.json(out, 400);
+    return c.json(out);
+  });
+
   app.post("/api/kill", async (c) => {
     if (!requireAuth(c)) return c.json({ error: "dashboard authentication required" }, 401);
     const body = await c.req.json<{ killed: boolean }>();
@@ -98,7 +133,7 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
   });
 
   app.post("/api/company-day", async (c) => {
-    // Default off: do not imply human approval. Explicit body opt-in for demos/tests.
+    await expireExceptionTtl(company);
     let autoApproveException = false;
     try {
       const body = await c.req.json<{ autoApproveException?: boolean }>();
@@ -117,11 +152,22 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
     const ctrl = (
       await company.db.select().from(controlState).where(eq(controlState.id, "global"))
     )[0];
+    const transparency = (await company.db.select().from(transparencyRecords)).slice(-50);
     return c.json({
       aibom,
       spans,
       auditOk: recentDenies,
       killed: Boolean(ctrl?.killed),
+      enforcement: company.policy.getEnforcementMode(),
+      transparency,
+      gLabels: {
+        G1: "membership/active",
+        G2: "deliberation trail",
+        G3: "quorum N-of-M",
+        G4: "dissent on reject",
+        G5: "decision transparency",
+        G6: "appeal/escalation",
+      },
       asiControls: {
         ASI01: "untrusted KB/CRM boundary",
         ASI02: "fail-closed gateway + draft/settle",
@@ -142,6 +188,16 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
       },
       note: "Crosswalk is pedagogical; not a certification claim.",
     });
+  });
+
+  app.post("/api/governance/enforcement", async (c) => {
+    if (!requireAuth(c)) return c.json({ error: "dashboard authentication required" }, 401);
+    const body = await c.req.json<{ mode: EnforcementMode }>();
+    if (body.mode !== "strict" && body.mode !== "audit") {
+      return c.json({ error: "mode must be strict|audit" }, 400);
+    }
+    company.policy.setEnforcementMode(body.mode);
+    return c.json({ ok: true, mode: body.mode });
   });
 
   app.get("/api/traces/:taskId", async (c) => {
@@ -174,6 +230,7 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
       await stream.writeSSE({
         data: JSON.stringify({
           type: "snapshot",
+          recent: recentFirmEvents(),
           firm: {
             agents: await company.db.select().from(agents),
             exceptions: (await company.db.select().from(exceptions)).filter(
@@ -182,6 +239,18 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
           },
         }),
       });
+      const unsub = subscribeFirmEvents((event) => {
+        void stream.writeSSE({ data: JSON.stringify(event) });
+      });
+      // Keep stream open; client disconnect ends the handler when write fails.
+      try {
+        while (true) {
+          await stream.writeSSE({ data: JSON.stringify({ type: "heartbeat", at: Date.now() }) });
+          await stream.sleep(15_000);
+        }
+      } finally {
+        unsub();
+      }
     }),
   );
 
@@ -194,5 +263,12 @@ export async function createDefaultCompany(): Promise<{
 }> {
   const { mode } = resolveProvider();
   const company = await createCompany({ dbPath: process.env.CORPOS_DB });
+  await expireExceptionTtl(company);
   return { company, mode };
+}
+
+export function startTtlScheduler(company: Company, intervalMs = 30_000): NodeJS.Timeout {
+  return setInterval(() => {
+    void expireExceptionTtl(company);
+  }, intervalMs);
 }

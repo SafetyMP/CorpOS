@@ -20,6 +20,8 @@ export const agents = sqliteTable("agents", {
   violations: integer("violations").notNull().default(0),
   /** G1 membership: 1=active, 0=inactive */
   active: integer("active").notNull().default(1),
+  /** JSON string array of approver role labels (G3) */
+  approverRoles: text("approver_roles").notNull().default("[]"),
 });
 
 export const contracts = sqliteTable("contracts", {
@@ -69,6 +71,32 @@ export const exceptions = sqliteTable("exceptions", {
   /** G4 dissent / reject reason (never overwritten once set) */
   dissentReason: text("dissent_reason"),
   pauseJson: text("pause_json"),
+  /** G6: one-shot appeal used */
+  appealUsed: integer("appeal_used").notNull().default(0),
+  appealedAt: text("appealed_at"),
+  /** Quorum votes JSON (G3) */
+  votesJson: text("votes_json").notNull().default("[]"),
+});
+
+/** G2 append-only deliberation trail */
+export const deliberationEntries = sqliteTable("deliberation_entries", {
+  id: text("id").primaryKey(),
+  exceptionId: text("exception_id").notNull(),
+  kind: text("kind").notNull(),
+  by: text("by").notNull(),
+  body: text("body").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+/** G5 decision transparency records */
+export const transparencyRecords = sqliteTable("transparency_records", {
+  id: text("id").primaryKey(),
+  decisionId: text("decision_id").notNull(),
+  traceId: text("trace_id"),
+  kind: text("kind").notNull(),
+  summary: text("summary").notNull(),
+  payloadJson: text("payload_json").notNull(),
+  createdAt: text("created_at").notNull(),
 });
 
 export const drafts = sqliteTable("drafts", {

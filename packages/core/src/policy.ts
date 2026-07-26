@@ -1,6 +1,6 @@
 import type { Db } from "./db.js";
 import type { Effect, PolicyDecision, PolicyRule, RiskLevel, Tool, ToolContext } from "./types.js";
-import { agents, controlState, departments, exceptions } from "./schema.js";
+import { agents, controlState, deliberationEntries, departments, exceptions } from "./schema.js";
 import { eq } from "drizzle-orm";
 import { newId } from "./id.js";
 import { now } from "./types.js";
@@ -35,9 +35,13 @@ const DEFAULT_TOOL_ALLOWLIST = [
   "agent.handoff",
 ];
 
+export type QuorumConfig = { n: number; m: number; role: string };
+
 export class PolicyEngine {
   private rules: PolicyRule[] = [];
   private mode: EnforcementMode = "strict";
+  /** riskLevel → quorum (G3). Default: L4+ requires 2-of-3 approvers when enabled. */
+  private quorumByRisk = new Map<number, QuorumConfig>();
 
   constructor(
     private db: Db,
@@ -52,6 +56,31 @@ export class PolicyEngine {
 
   setEnforcementMode(mode: EnforcementMode): void {
     this.mode = mode;
+  }
+
+  getEnforcementMode(): EnforcementMode {
+    return this.mode;
+  }
+
+  /** Configure N-of-M quorum for a minimum risk level (inclusive). */
+  setQuorumForRisk(minRisk: number, config: QuorumConfig | null): void {
+    if (!config) {
+      this.quorumByRisk.delete(minRisk);
+      return;
+    }
+    this.quorumByRisk.set(minRisk, config);
+  }
+
+  getQuorumConfig(riskLevel: number): QuorumConfig | null {
+    let best: QuorumConfig | null = null;
+    let bestKey = -1;
+    for (const [min, cfg] of this.quorumByRisk) {
+      if (riskLevel >= min && min >= bestKey) {
+        best = cfg;
+        bestKey = min;
+      }
+    }
+    return best;
   }
 
   async evaluate(
@@ -99,6 +128,14 @@ export class PolicyEngine {
         decisionId: authz.decisionId,
         authzLayer: authz.layer,
       };
+    }
+    if (this.mode === "audit" && authz.reason.startsWith("audit-mode would deny:")) {
+      await this.audit.append("policy.audit_would_deny", {
+        tool: tool?.name ?? "unknown",
+        reason: authz.reason,
+        decisionId: authz.decisionId,
+        layer: authz.layer,
+      });
     }
 
     if (!tool) {
@@ -156,12 +193,23 @@ export class PolicyEngine {
         state: "pending",
         ttlAt: ttl,
         createdAt: now(),
+        votesJson: "[]",
+        appealUsed: 0,
       });
       await this.audit.append("exception.requested", {
         approvalId,
         tool: tool.name,
         decisionId: authz.decisionId,
       });
+      await this.db.insert(deliberationEntries).values({
+        id: newId("del"),
+        exceptionId: approvalId,
+        kind: "opened",
+        by: ctx.agentId,
+        body: `${tool.name} requires exception approval`,
+        createdAt: now(),
+      });
+
       return {
         effect: "approve",
         reason: `${tool.name} requires exception approval`,
@@ -186,9 +234,9 @@ export class PolicyEngine {
     };
   }
 
-  async expireTtl(): Promise<number> {
+  async expireTtl(): Promise<{ count: number; expiredIds: string[] }> {
     const pending = (await this.db.select().from(exceptions)).filter((e) => e.state === "pending");
-    let n = 0;
+    const expiredIds: string[] = [];
     const t = now();
     for (const e of pending) {
       if (e.ttlAt < t) {
@@ -196,9 +244,9 @@ export class PolicyEngine {
           .update(exceptions)
           .set({ state: "rejected", decidedAt: t, decidedBy: "ttl", dissentReason: "TTL expired" })
           .where(eq(exceptions.id, e.id));
-        n++;
+        expiredIds.push(e.id);
       }
     }
-    return n;
+    return { count: expiredIds.length, expiredIds };
   }
 }

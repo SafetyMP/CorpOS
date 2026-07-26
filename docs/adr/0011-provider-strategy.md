@@ -1,13 +1,10 @@
-# ADR-11: Provider strategy
+# ADR-11: Provider strategy (r3 amendment)
 
 ## Status
-Accepted (corpos-autonomous-company-r2)
-
-## Context
-July 2026 autonomous-company reference revision.
+Accepted (corpos-autonomous-company-r3)
 
 ## Decision
-Implement Provider strategy as specified in corporate master-spec ADR-11.
-
-## Consequences
-Bound by site harness verify/adversarial gates.
+SimulationProvider remains the CI/default scripted company-day provider.
+When `CORPOS_ALLOW_LIVE=1` and `OPENROUTER_API_KEY` are set, `resolveProvider()`
+returns HttpLLMProvider and company-day/orchestrator use that live provider.
+`/api/health.mode` is `live` only when HttpLLMProvider is active.

@@ -1,0 +1,84 @@
+{
+  "contractId": "ctr_AwtSG00tu0",
+  "handoffs": 2,
+  "autonomousSettles": 1,
+  "exceptionSettles": 1,
+  "compensated": 1,
+  "trustAfter": 2,
+  "slaExceptions": 1,
+  "auditHead": "ede5aa13423a5eb6ee22ca9bda24838b4cf382e7c163c4b45508c8af0a487ce2",
+  "ok": true,
+  "timeline": [
+    {
+      "id": "evt_1",
+      "agentId": "agent_support",
+      "role": "Support",
+      "kind": "intake",
+      "summary": "Opened refund contract for ada@example.com ($49)."
+    },
+    {
+      "id": "evt_2",
+      "agentId": "agent_support",
+      "role": "Support",
+      "kind": "handoff",
+      "summary": "Handed refund obligation to Finance."
+    },
+    {
+      "id": "evt_3",
+      "agentId": "agent_support",
+      "role": "Support",
+      "kind": "trust",
+      "summary": "Clean handoff raised Support trust (earned autonomy)."
+    },
+    {
+      "id": "evt_4",
+      "agentId": "agent_finance",
+      "role": "Finance",
+      "kind": "autonomous_settle",
+      "summary": "Autonomously settled $49 refund (earned risk budget)."
+    },
+    {
+      "id": "evt_5",
+      "agentId": "agent_finance",
+      "role": "Finance",
+      "kind": "handoff",
+      "summary": "Handed post-refund health check to Ops."
+    },
+    {
+      "id": "evt_6",
+      "agentId": "agent_ops",
+      "role": "Ops",
+      "kind": "exception",
+      "summary": "Restart requires human approval — exception queued."
+    },
+    {
+      "id": "evt_7",
+      "agentId": "agent_ops",
+      "role": "Ops",
+      "kind": "exception",
+      "summary": "Demo auto-approved restart (explicit opt-in); billing-api restarted."
+    },
+    {
+      "id": "evt_8",
+      "agentId": "agent_support",
+      "role": "Support",
+      "kind": "trust",
+      "summary": "Clean accepts raised Support maxAutonomousRisk."
+    },
+    {
+      "id": "evt_9",
+      "agentId": "agent_finance",
+      "role": "Finance",
+      "kind": "compensate",
+      "summary": "Compensated 1 settled action(s); ledger restored."
+    },
+    {
+      "id": "evt_10",
+      "agentId": "agent_support",
+      "role": "Support",
+      "kind": "sla",
+      "summary": "SLA breach enqueued exception for human review."
+    }
+  ],
+  "providerMode": "simulation"
+}

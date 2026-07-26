@@ -2,7 +2,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildApp, createDefaultCompany } from "./app.js";
+import { buildApp, createDefaultCompany, startTtlScheduler } from "./app.js";
 import { runCompanyDay } from "@corpos/core";
 
 const scenario = process.argv.includes("--scenario");
@@ -14,6 +14,7 @@ if (scenario) {
 }
 
 const { company, mode } = await createDefaultCompany();
+startTtlScheduler(company);
 const app = buildApp(company, mode);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
