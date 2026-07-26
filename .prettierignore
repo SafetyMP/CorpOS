@@ -2,6 +2,9 @@ dist/
 node_modules/
 data/
 docs/
+_archives/
+_legacy_src/
+_legacy_test/
 .kilo/
 .playwright-mcp/
 package-lock.json
