@@ -20,7 +20,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "drizzle-orm": "^0.45.2",
     "nanoid": "^5.0.7",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
