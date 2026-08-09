@@ -145,7 +145,7 @@ export async function runCompanyDay(opts?: {
     opts?.company ?? (await createCompany({ dbPath: opts?.dbPath ?? ":memory:", mcpInvoke }));
 
   let provider: LLMProvider;
-  let providerMode: "simulation" | "live" = "simulation";
+  let providerMode: "simulation" | "live";
   if (opts?.provider) {
     provider = opts.provider;
     providerMode = provider.id === "live" ? "live" : "simulation";
