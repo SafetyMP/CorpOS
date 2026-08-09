@@ -58,7 +58,7 @@ dist/assets/index-EZBLqJ-Y.js   19.91 kB │ gzip: 7.86 kB
 > vitest run
 
 
- RUN  v3.2.7 /Users/sagehart/Downloads/CorpOS
+ RUN  v3.2.7 /Users/<redacted>/Downloads/CorpOS
 
  ✓ test/governance.test.ts (5 tests) 67ms
  ✓ test/governance-r3.test.ts (8 tests) 92ms
