@@ -81,7 +81,7 @@ Architecture decisions live in [`docs/adr/README.md`](docs/adr/README.md).
 
 ## Security
 
-Reference architecture — not production-hardened. `CORPOS_MODE=shared` plus `DASHBOARD_API_TOKEN` enables a **Bearer token gate on the API** for approve/kill mutations. The ops console does not yet attach that token (shared-mode approvals return 401 until a Bearer-capable client is used). See [SECURITY.md](SECURITY.md).
+Reference architecture — not production-hardened. `DASHBOARD_API_TOKEN` is required for approve/kill mutations by default; `CORPOS_MODE=local` does not skip the bearer gate. Set `CORPOS_ALLOW_UNAUTHENTICATED=true` only for local simulation. See [SECURITY.md](SECURITY.md).
 
 ## Community
 

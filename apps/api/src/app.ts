@@ -30,7 +30,8 @@ import { fileURLToPath } from "node:url";
 
 /** Dashboard bearer gate — exported for adversarial behavioral probes. */
 export function requireAuth(c: { req: { header: (n: string) => string | undefined } }): boolean {
-  if (process.env.CORPOS_MODE !== "shared") return true;
+  // Ungated simulation only with an explicit opt-in (FO-017). CORPOS_MODE !== "shared" must not imply allow.
+  if (process.env.CORPOS_ALLOW_UNAUTHENTICATED === "true") return true;
   const expected = process.env.DASHBOARD_API_TOKEN?.trim();
   if (!expected) return false;
   const header = c.req.header("authorization") ?? "";
