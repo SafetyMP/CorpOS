@@ -162,12 +162,34 @@ const email = await company.gateway.invoke(
 );
 cell("ASI09", email.decision.effect === "approve" && Boolean(email.decision.approvalId), "HITL");
 
-// AUTH — exercise real requireAuth via HTTP on /api/kill (shared mode)
+// AUTH — requireAuth is closed by default; CORPOS_MODE=local must not ungated (FO-017)
 const prevMode = process.env.CORPOS_MODE;
 const prevToken = process.env.DASHBOARD_API_TOKEN;
-process.env.CORPOS_MODE = "shared";
+const prevAllow = process.env.CORPOS_ALLOW_UNAUTHENTICATED;
+delete process.env.CORPOS_ALLOW_UNAUTHENTICATED;
+delete process.env.CORPOS_MODE;
 process.env.DASHBOARD_API_TOKEN = "secret";
 const app = buildApp(company, "simulation");
+const defaultUnauth = await app.request("/api/kill", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ killed: true }),
+});
+process.env.CORPOS_MODE = "local";
+const localUnauth = await app.request("/api/kill", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ killed: true }),
+});
+process.env.CORPOS_ALLOW_UNAUTHENTICATED = "true";
+const optIn = await app.request("/api/kill", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ killed: false }),
+});
+delete process.env.CORPOS_ALLOW_UNAUTHENTICATED;
+process.env.CORPOS_MODE = "shared";
+process.env.DASHBOARD_API_TOKEN = "secret";
 const unauth = await app.request("/api/kill", {
   method: "POST",
   headers: { "content-type": "application/json" },
@@ -185,11 +207,20 @@ if (prevMode === undefined) delete process.env.CORPOS_MODE;
 else process.env.CORPOS_MODE = prevMode;
 if (prevToken === undefined) delete process.env.DASHBOARD_API_TOKEN;
 else process.env.DASHBOARD_API_TOKEN = prevToken;
+if (prevAllow === undefined) delete process.env.CORPOS_ALLOW_UNAUTHENTICATED;
+else process.env.CORPOS_ALLOW_UNAUTHENTICATED = prevAllow;
 const authedBody = await authed.json();
+const optInBody = await optIn.json();
 cell(
   "AUTH",
-  unauth.status === 401 && authed.status === 200 && authedBody.killed === false,
-  `unauth=${unauth.status} authed=${authed.status}`,
+  defaultUnauth.status === 401 &&
+    localUnauth.status === 401 &&
+    unauth.status === 401 &&
+    authed.status === 200 &&
+    authedBody.killed === false &&
+    optIn.status === 200 &&
+    optInBody.killed === false,
+  `default=${defaultUnauth.status} local=${localUnauth.status} unauth=${unauth.status} authed=${authed.status} optin=${optIn.status}`,
 );
 
 // Audit forge
