@@ -2,6 +2,8 @@
 
 > **Company-day simulation** of a firm — work contracts, PDP/PEP policy gates, and humans who Approve / Reject / Kill. Not an autonomous-company SaaS, and not LangGraph, CrewAI, or any multi-agent orchestration framework.
 
+> **In the SafetyMP thesis:** Agent path inside a **simulated firm**. Default actors are scripted (`SimulationProvider`). This is not a live EHS, health, or finance workforce. See the [portfolio README](https://github.com/SafetyMP/SafetyMP).
+
 [![CI](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/SafetyMP/CorpOS/badge)](https://scorecard.dev/viewer/?uri=github.com/SafetyMP/CorpOS)
