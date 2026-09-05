@@ -12,6 +12,10 @@ Treat it as a design artifact you can run locally.
 - Exception HITL with scheduled TTL fail-closed; kill switch; department capital caps.
 - Shared-mode console sends Bearer (`VITE_DASHBOARD_API_TOKEN` / `DASHBOARD_API_TOKEN`).
 - Dashboard mutations require `DASHBOARD_API_TOKEN` by default; `CORPOS_MODE !== "shared"` does not ungated them.
+- Approve/appeal bind `decidedBy` and tenant matching to `DASHBOARD_OPERATOR_ID` /
+  `DASHBOARD_TENANT_ID` (defaults `operator@dashboard` / `default`). Client-supplied
+  `by` / `tenantId` on those routes are ignored. This is still a shared static token,
+  not per-user OIDC.
 - G3 quorum, G6 appeal, and enforcement `strict`/`audit` modes.
 - Hash-chained audit receipts (`npm run audit:verify`).
 - Company-day demos do not auto-approve exceptions unless a caller passes
@@ -30,7 +34,9 @@ Treat it as a design artifact you can run locally.
 When `CORPOS_ALLOW_UNAUTHENTICATED` is unset, `DASHBOARD_API_TOKEN` is required as a **Bearer**
 token on API approve and kill mutations. `CORPOS_MODE=local` (or any value other than
 an explicit opt-in) does not skip the gate. The ops console sends
-`VITE_DASHBOARD_API_TOKEN` when configured. This is a
+`VITE_DASHBOARD_API_TOKEN` when configured. The server derives the decider and tenant
+from `DASHBOARD_OPERATOR_ID` / `DASHBOARD_TENANT_ID`, not from the request body, and
+rejects decide/appeal when the exception tenant does not match. This is a
 static token compare for demos, not an OAuth flow.
 
 ## Dependency / supply-chain hygiene
@@ -43,7 +49,7 @@ static token compare for demos, not an OAuth flow.
   `./scripts/harness/verify.sh` fails if `npm approve-scripts --allow-scripts-pending` reports gaps.
 - Verify does **not** wipe `node_modules` by default (avoids concurrent `ENOTEMPTY` races).
   CI sets `CORPOS_VERIFY_CLEAN=1` for a full reinstall. Never fetch npm via `npx` inside verify.
-- `@hono/node-server` is pinned to `2.0.11` via root dependency + `overrides` (covers API
+- `@hono/node-server` is pinned to `2.0.12` via root dependency + `overrides` (covers API
   `serveStatic` and `@modelcontextprotocol/sdk`).
 - Review Dependabot PRs before merge; re-run `npm approve-scripts --allow-scripts-pending`
   after lockfile changes that introduce new install scripts.

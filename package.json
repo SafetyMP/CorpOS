@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@corpos/core": "0.2.0",
-    "@hono/node-server": "2.0.11",
+    "@hono/node-server": "2.0.12",
     "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
@@ -48,7 +48,7 @@
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "gifenc": "^1.0.3",
-    "globals": "^17.7.0",
+    "globals": "^17.8.0",
     "playwright": "^1.52.0",
     "pngjs": "^7.0.0",
     "prettier": "^3.9.3",
@@ -64,9 +64,9 @@
     "fsevents@2.3.2": true
   },
   "overrides": {
-    "@hono/node-server": "2.0.11",
+    "@hono/node-server": "2.0.12",
     "@modelcontextprotocol/sdk": {
-      "@hono/node-server": "2.0.11"
+      "@hono/node-server": "2.0.12"
     }
   }
 }

@@ -28,6 +28,24 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+export const DEFAULT_DASHBOARD_OPERATOR_ID = "operator@dashboard";
+export const DEFAULT_DASHBOARD_TENANT_ID = "default";
+
+export type DashboardIdentity = {
+  operatorId: string;
+  tenantId: string;
+};
+
+/**
+ * Identity bound to the shared dashboard bearer (or unauthenticated opt-in).
+ * Never read client-supplied `by` / `tenantId` from the request body.
+ */
+export function dashboardIdentity(): DashboardIdentity {
+  const operatorId = process.env.DASHBOARD_OPERATOR_ID?.trim() || DEFAULT_DASHBOARD_OPERATOR_ID;
+  const tenantId = process.env.DASHBOARD_TENANT_ID?.trim() || DEFAULT_DASHBOARD_TENANT_ID;
+  return { operatorId, tenantId };
+}
+
 /** Dashboard bearer gate — exported for adversarial behavioral probes. */
 export function requireAuth(c: { req: { header: (n: string) => string | undefined } }): boolean {
   // Ungated simulation only with an explicit opt-in (FO-017). CORPOS_MODE !== "shared" must not imply allow.
@@ -36,6 +54,24 @@ export function requireAuth(c: { req: { header: (n: string) => string | undefine
   if (!expected) return false;
   const header = c.req.header("authorization") ?? "";
   return header === `Bearer ${expected}`;
+}
+
+type ExceptionRow = (typeof exceptions)["$inferSelect"];
+
+type BoundException =
+  | { status: 200; ex: ExceptionRow }
+  | { status: 403; error: string }
+  | { status: 404; error: string };
+
+async function bindExceptionTenant(
+  company: Company,
+  exceptionId: string,
+  tenantId: string,
+): Promise<BoundException> {
+  const ex = (await company.db.select().from(exceptions).where(eq(exceptions.id, exceptionId)))[0];
+  if (!ex) return { status: 404, error: "not found" };
+  if (ex.tenantId !== tenantId) return { status: 403, error: "cross-tenant approval denied" };
+  return { status: 200, ex };
 }
 
 function loadAibom(): unknown {
@@ -98,32 +134,45 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
   app.post("/api/exceptions/:id/decide", async (c) => {
     if (!requireAuth(c)) return c.json({ error: "dashboard authentication required" }, 401);
     await expireExceptionTtl(company);
+    const identity = dashboardIdentity();
     const body = await c.req.json<{
       decision: "approved" | "rejected";
-      by?: string;
       dissentReason?: string;
     }>();
+    if (body.decision !== "approved" && body.decision !== "rejected") {
+      return c.json({ error: "decision must be approved|rejected" }, 400);
+    }
+    const bound = await bindExceptionTenant(company, c.req.param("id"), identity.tenantId);
+    if (bound.status !== 200) return c.json({ error: bound.error }, bound.status);
     const out = await decideException(
       company,
-      c.req.param("id"),
+      bound.ex.id,
       body.decision,
-      body.by ?? "operator",
+      identity.operatorId,
       body.dissentReason,
     );
-    return c.json({ ok: true, ...out });
+    return c.json({
+      ok: true,
+      decidedBy: identity.operatorId,
+      tenantId: identity.tenantId,
+      ...out,
+    });
   });
 
   app.post("/api/exceptions/:id/appeal", async (c) => {
     if (!requireAuth(c)) return c.json({ error: "dashboard authentication required" }, 401);
-    const body = await c.req.json<{ by?: string; reason?: string }>();
+    const identity = dashboardIdentity();
+    const body = await c.req.json<{ reason?: string }>();
+    const bound = await bindExceptionTenant(company, c.req.param("id"), identity.tenantId);
+    if (bound.status !== 200) return c.json({ error: bound.error }, bound.status);
     const out = await appealException(
       company,
-      c.req.param("id"),
-      body.by ?? "operator",
+      bound.ex.id,
+      identity.operatorId,
       body.reason ?? "appeal",
     );
     if (!out.ok) return c.json(out, 400);
-    return c.json(out);
+    return c.json({ ...out, decidedBy: identity.operatorId, tenantId: identity.tenantId });
   });
 
   app.post("/api/kill", async (c) => {
