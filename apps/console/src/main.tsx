@@ -159,7 +159,6 @@ function App() {
       headers: authHeaders({ "content-type": "application/json" }),
       body: JSON.stringify({
         decision,
-        by: "operator@console",
         dissentReason: decision === "rejected" ? dissent || "rejected by operator" : undefined,
       }),
     });

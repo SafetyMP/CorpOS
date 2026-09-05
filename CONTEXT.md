@@ -15,6 +15,8 @@ Commands: `npm run dev`, `npm test`, `npm run scenario`, `npm run audit:verify`,
   `HttpLLMProvider` when live; `/api/health.mode` reports `live` only then).
 - Shared mode (`CORPOS_MODE=shared` + `DASHBOARD_API_TOKEN`) gates approve/kill on
   the API via Bearer; console sends `VITE_DASHBOARD_API_TOKEN` when configured.
+  Decide/appeal bind `decidedBy` and tenant to `DASHBOARD_OPERATOR_ID` /
+  `DASHBOARD_TENANT_ID` (not the request body).
 
 Site id: `corpos`. Program: `corpos-autonomous-company-r3`.
 G1–G6 firm governance coded; TTL scheduler; console Bearer; orchestrator-driven day; live SSE.
