@@ -1,27 +1,42 @@
-# Site contract
+# CorpOS — agent notes
 
-## Gates
+CorpOS is a **company-day simulation**: firm model, work contracts, PDP/PEP
+policy gates, and humans who Approve / Reject / Kill. It is not an agent
+orchestration framework (not LangGraph, not CrewAI). LLM calls are optional
+actors inside the sim (`CORPOS_ALLOW_LIVE=1`) and must never run in CI.
 
-| Command                            | Purpose                             |
-| ---------------------------------- | ----------------------------------- |
-| `./scripts/harness/verify.sh`      | Functional and static acceptance    |
-| `./scripts/harness/adversarial.sh` | Authorized local adversarial probes |
+Factory / corporate-site overlay: [`docs/factory-overlay.md`](docs/factory-overlay.md).
+Positioning: [`docs/DESIGN-PIVOT.md`](docs/DESIGN-PIVOT.md).
 
-Record `verification_scripts` as the site directory `scripts/harness`. Required
-entrypoints are `verify.sh` and `adversarial.sh`. Digest-bound companions under
-the same directory (included in the harness digest) are:
+## Commands
 
-- `check-stub-canary.sh` — mandatory non-trivial verify canary
-- `adversarial-run.mjs` — adversarial probe implementation
+| Command                            | Purpose                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| `./scripts/harness/verify.sh`      | Definition of Done — build, typecheck, test, lint, format, stack guards  |
+| `./scripts/harness/adversarial.sh` | Authorized local adversarial probes                                      |
+| `npm test`                         | Unit tests                                                               |
+| `npm run scenario`                 | HITL default-off company day; non-zero unless the exception auto-settles |
+| `npm run audit:verify`             | Hash-chained audit receipts                                              |
 
-Optional wrappers may remain at `scripts/verify.sh` / `scripts/adversarial.sh`
-(and `scripts/check-stub-canary.sh`) for humans; they are outside the digest
-boundary.
+A change is not done until `./scripts/harness/verify.sh` is green.
 
-The corporate handoff fixes scope. The site manager assigns ADRs; site specialists write;
-operations excellence reviews current evidence. Work in isolated roots, never edit
-corporate approval state, and never self-approve.
+## Layout
 
-Site id: `corpos`. Prior Cursor Harness v4 is under `_archives/harness-v4/`.
-Product company-day demos must not auto-approve exceptions unless a test/CI
-caller passes `autoApproveException: true` explicitly.
+| Path                     | Responsibility                                               |
+| ------------------------ | ------------------------------------------------------------ |
+| `packages/core`          | Firm model, work contracts, gateway / PDP / PEP, company day |
+| `packages/mcp-knowledge` | Local MCP knowledge server (stdio)                           |
+| `apps/api`               | Hono REST + SSE                                              |
+| `apps/console`           | Vite + Preact ops console                                    |
+
+## Hard rules
+
+- **Never auto-approve exceptions** unless a test/CI caller passes
+  `autoApproveException: true` explicitly. Product demos and the ops console
+  keep it `false`.
+- **Never live LLM in CI.** Default provider is `SimulationProvider`.
+  `CORPOS_ALLOW_LIVE` and `OPENROUTER_API_KEY` must stay unset in verify and CI.
+- Do not add LangGraph, CrewAI, or other graph/crew runtimes to “keep up.”
+  See [`docs/DESIGN-PIVOT.md`](docs/DESIGN-PIVOT.md).
+- Do not introduce Express or `better-sqlite3`.
+- Never commit secrets, `*.db`, `.env`, or `dist/`.

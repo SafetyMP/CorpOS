@@ -1,6 +1,8 @@
 # CorpOS
 
-> Reference implementation of an **autonomous company** — firm model, work contracts, policy-gated control plane, and a July 2026 **governance plane** (PDP/PEP, three-layer authz, OTel GenAI, OWASP ASI / NIST RMF crosswalk).
+> **Company-day simulation** of a firm — work contracts, PDP/PEP policy gates, and humans who Approve / Reject / Kill. Not an autonomous-company SaaS, and not LangGraph, CrewAI, or any multi-agent orchestration framework.
+
+> **Permit rule:** Approve / Reject / Kill is the closer. Default actors are scripted; live LLMs are optional. This is not a live EHS, health, or finance workforce. Same instinct: [SafetyMP](https://github.com/SafetyMP/SafetyMP).
 
 [![CI](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml)
@@ -8,11 +10,11 @@
 [![License: Apache-2.0](https://img.shields.io/github/license/SafetyMP/CorpOS)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)](#quick-start)
 
-CorpOS shows how a firm operates when department agents do most work and **humans govern by exception** (Approve / Reject / Kill in the ops console). Autonomy is earned from evidence, not granted in prompts. Interop protocols (MCP) are transport; firm-side governance includes **G1 membership** and **G4 dissent** today, with a broader G1–G6 crosswalk in the docs.
+CorpOS simulates a company day: department actors settle work contracts under a policy gate, and **humans govern by exception** (Approve / Reject / Kill in the ops console). Autonomy is earned from evidence, not granted in prompts. Interop protocols (MCP) are transport; firm-side governance includes **G1 membership** and **G4 dissent** today, with a broader G1–G6 crosswalk in the docs. Positioning: [`docs/DESIGN-PIVOT.md`](docs/DESIGN-PIVOT.md).
 
 > **Scope:** Reference architecture and runnable demo — **not** a production-hardened SaaS. See [SECURITY.md](SECURITY.md).
 
-Default mode is **simulation** (`SimulationProvider`) for deterministic CI. Live LLM (`HttpLLMProvider`) drives company-day/orchestrator only when `CORPOS_ALLOW_LIVE=1` and `OPENROUTER_API_KEY` are set — `/api/health.mode` never lies. G1–G6 firm governance, orchestrator-driven day, TTL scheduler, console Bearer (shared mode), and live `/api/events` SSE are implemented.
+Default mode is **simulation** (`SimulationProvider`) for deterministic CI. Live LLM (`HttpLLMProvider`) is an optional actor inside the sim only when `CORPOS_ALLOW_LIVE=1` and `OPENROUTER_API_KEY` are set — `/api/health.mode` never lies. G1–G6 firm governance, orchestrator-driven day, TTL scheduler, console Bearer (shared mode), and live `/api/events` SSE are implemented.
 
 Read the thesis: [`docs/future-of-the-firm.md`](docs/future-of-the-firm.md). Governance crosswalk: [`docs/governance-crosswalk.md`](docs/governance-crosswalk.md). AIBOM: [`docs/aibom.json`](docs/aibom.json). Docs index: [`docs/README.md`](docs/README.md).
 

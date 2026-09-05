@@ -1,0 +1,19 @@
+# CorpOS
+
+> Company-day simulation of a firm: work contracts, PDP/PEP, humans Approve/Reject/Kill. Not an autonomous-company SaaS. Not LangGraph or CrewAI.
+
+## Docs
+
+- [README](README.md): quick start and architecture
+- [DESIGN-PIVOT](docs/DESIGN-PIVOT.md): September 2026 positioning — simulation, not an orchestration framework
+- [AGENTS](AGENTS.md): contributor and coding-agent conventions
+- [Future of the firm](docs/future-of-the-firm.md): thesis and 20-minute demo
+- [Governance crosswalk](docs/governance-crosswalk.md): NIST / OWASP ASI (pedagogical)
+- [Security](SECURITY.md): reference-architecture posture
+- [Contributing](CONTRIBUTING.md): setup and PR expectations
+
+## Verify
+
+`./scripts/harness/verify.sh`
+
+Default provider is simulation. Live LLM (`CORPOS_ALLOW_LIVE`) is optional and never used in CI.
