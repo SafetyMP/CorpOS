@@ -55,8 +55,8 @@ static token compare for demos, not an OAuth flow.
   after lockfile changes that introduce new install scripts.
 - Do **not** set `dangerously-allow-all-scripts=true` in CI.
 
-## Reporting
+## Reporting a Vulnerability
 
-Use GitHub Security Advisories on the CorpOS repository for **vulnerabilities**.
-Conduct issues are handled under [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), not
-security advisories.
+Use GitHub Security Advisories on the CorpOS repository for **vulnerabilities**
+([`.github/SECURITY.md`](.github/SECURITY.md)). Conduct issues are handled under
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), not security advisories.
