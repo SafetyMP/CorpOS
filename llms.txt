@@ -17,3 +17,6 @@
 `./scripts/harness/verify.sh`
 
 Default provider is simulation. Live LLM (`CORPOS_ALLOW_LIVE`) is optional and never used in CI.
+- [.github/copilot-instructions.md](.github/copilot-instructions.md): repository-wide Copilot coding standards
+- [.github/instructions/](.github/instructions/): path-specific Copilot coding standards (September 2026)
+- [.github/skills/code-review/SKILL.md](.github/skills/code-review/SKILL.md): Copilot code review skill

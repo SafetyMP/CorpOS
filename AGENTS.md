@@ -40,3 +40,9 @@ A change is not done until `./scripts/harness/verify.sh` is green.
   See [`docs/DESIGN-PIVOT.md`](docs/DESIGN-PIVOT.md).
 - Do not introduce Express or `better-sqlite3`.
 - Never commit secrets, `*.db`, `.env`, or `dist/`.
+
+## Coding standards (September 2026)
+
+Path-specific Copilot instructions: [`.github/instructions/`](.github/instructions/).
+Repository-wide Copilot file: [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
+Copilot code review skill: [`.github/skills/code-review/SKILL.md`](.github/skills/code-review/SKILL.md).
