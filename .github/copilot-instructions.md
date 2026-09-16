@@ -20,3 +20,7 @@ not a production SaaS.
 - Do not introduce Express or `better-sqlite3`.
 
 Read [`docs/DESIGN-PIVOT.md`](../docs/DESIGN-PIVOT.md) and [`AGENTS.md`](../AGENTS.md) before expanding scope.
+
+## Coding standards
+
+Follow path-specific files in [`.github/instructions/`](instructions/). Copilot code review loads [`.github/skills/code-review/`](skills/code-review/).
