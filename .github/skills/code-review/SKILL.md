@@ -14,7 +14,6 @@ CorpOS is a **company-day simulation**, not an orchestration framework.
 - Reject Express, `better-sqlite3`, LangGraph, or CrewAI.
 - Verify with `./scripts/harness/verify.sh`.
 
-
 ## Always flag
 
 - Secrets, `.env` values, private keys, or real personal data in the diff

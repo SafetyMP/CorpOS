@@ -20,4 +20,3 @@ CorpOS simulates a company day: firm model, work contracts, PDP/PEP, humans Appr
 - Add LangGraph, CrewAI, Express, or `better-sqlite3`.
 
 Verify: `./scripts/harness/verify.sh`.
-
