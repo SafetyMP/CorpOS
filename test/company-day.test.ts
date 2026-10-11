@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildApp } from "@corpos/api";
 import {
   computeMaxAutonomousRisk,
   counterfactualReplay,
   createCompany,
+  exceptions,
   runCompanyDay,
 } from "@corpos/core";
 
 describe("company day", () => {
-  it("runs multi-handoff day with autonomy, exception, compensation, sla, trust", async () => {
+  it("runs multi-handoff day with autonomy, exception, sla, trust", async () => {
     const { company, result } = await runCompanyDay({
       dbPath: ":memory:",
       autoApproveException: true,
@@ -17,7 +19,10 @@ describe("company day", () => {
     expect(result.handoffs).toBeGreaterThanOrEqual(2);
     expect(result.autonomousSettles).toBeGreaterThanOrEqual(1);
     expect(result.exceptionSettles).toBeGreaterThanOrEqual(1);
-    expect(result.compensated).toBeGreaterThanOrEqual(1);
+    expect(result.compensated).toBe(0);
+    expect(company.seed.refunds).toEqual([
+      expect.objectContaining({ amount: 49, customer: "ada@example.com" }),
+    ]);
     expect(result.slaExceptions).toBeGreaterThanOrEqual(1);
     expect(result.trustAfter).toBeGreaterThanOrEqual(2);
     expect(result.ok).toBe(true);
@@ -33,12 +38,77 @@ describe("company day", () => {
     company.close();
   });
 
-  it("does not auto-approve exceptions by default", async () => {
+  it("is ok when the refund stays and the restart is pending", async () => {
     const { company, result } = await runCompanyDay({ dbPath: ":memory:" });
     expect(result.exceptionSettles).toBe(0);
+    expect(result.compensated).toBe(0);
     expect(result.timeline.some((e) => e.summary.includes("Human approved"))).toBe(false);
     expect(result.timeline.some((e) => e.summary.includes("Demo auto-approved"))).toBe(false);
+    expect(company.seed.refunds).toEqual([
+      expect.objectContaining({ amount: 49, customer: "ada@example.com" }),
+    ]);
+    const restarts = (await company.db.select().from(exceptions)).filter(
+      (row) => row.contractId === result.contractId && row.tool === "ops.restart_service",
+    );
+    expect(restarts).toHaveLength(1);
+    expect(restarts[0]?.state).toBe("pending");
+    expect(result.ok).toBe(true);
     company.close();
+  });
+
+  it("leaves a successful refund in place", async () => {
+    const { company, result } = await runCompanyDay({ dbPath: ":memory:" });
+    expect(result.autonomousSettles).toBeGreaterThanOrEqual(1);
+    expect(result.compensated).toBe(0);
+    expect(result.timeline.some((e) => e.kind === "compensate")).toBe(false);
+    expect(company.seed.refunds).toEqual([
+      expect.objectContaining({ id: "ref_1", amount: 49, customer: "ada@example.com" }),
+    ]);
+    const reversed = await company.gateway.compensate(result.contractId);
+    expect(reversed).toBe(1);
+    expect(company.seed.refunds).toEqual([]);
+    company.close();
+  });
+
+  it("does not let an unauthenticated company-day call auto-approve", async () => {
+    const previous = {
+      token: process.env.DASHBOARD_API_TOKEN,
+      allow: process.env.CORPOS_ALLOW_UNAUTHENTICATED,
+    };
+    delete process.env.DASHBOARD_API_TOKEN;
+    delete process.env.CORPOS_ALLOW_UNAUTHENTICATED;
+    try {
+      const company = await createCompany({ dbPath: ":memory:" });
+      const app = buildApp(company, "simulation");
+      const res = await app.request("/api/company-day", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ autoApproveException: true }),
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        exceptionSettles: number;
+        compensated: number;
+        timeline: Array<{ summary: string }>;
+      };
+      expect(body.exceptionSettles).toBe(0);
+      expect(body.compensated).toBe(0);
+      expect(body.timeline.some((e) => e.summary.includes("Demo auto-approved"))).toBe(false);
+      const restarts = (await company.db.select().from(exceptions)).filter(
+        (row) => row.tool === "ops.restart_service",
+      );
+      expect(restarts.length).toBe(1);
+      expect(restarts[0]?.state).toBe("pending");
+      expect(company.seed.refunds).toEqual([
+        expect.objectContaining({ amount: 49, customer: "ada@example.com" }),
+      ]);
+      company.close();
+    } finally {
+      if (previous.token === undefined) delete process.env.DASHBOARD_API_TOKEN;
+      else process.env.DASHBOARD_API_TOKEN = previous.token;
+      if (previous.allow === undefined) delete process.env.CORPOS_ALLOW_UNAUTHENTICATED;
+      else process.env.CORPOS_ALLOW_UNAUTHENTICATED = previous.allow;
+    }
   });
 
   it("fail-closed unknown tool and kill switch", async () => {

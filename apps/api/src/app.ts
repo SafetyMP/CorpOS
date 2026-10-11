@@ -184,14 +184,10 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
 
   app.post("/api/company-day", async (c) => {
     await expireExceptionTtl(company);
-    let autoApproveException = false;
-    try {
-      const body = await c.req.json<{ autoApproveException?: boolean }>();
-      if (body.autoApproveException === true) autoApproveException = true;
-    } catch {
-      /* empty body */
-    }
-    const { result } = await runCompanyDay({ company, autoApproveException });
+    // The JSON body cannot settle the restart. autoApproveException is ignored
+    // for every caller, including an unauthenticated one. Approve, Reject, or
+    // Kill is what moves a queued restart.
+    const { result } = await runCompanyDay({ company });
     return c.json(result);
   });
 

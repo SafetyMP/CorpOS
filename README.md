@@ -1,22 +1,14 @@
 # CorpOS
 
-> **Company-day simulation** of a firm — work contracts, PDP/PEP policy gates, and humans who Approve / Reject / Kill. Not an autonomous-company SaaS, and not LangGraph, CrewAI, or any multi-agent orchestration framework.
+One scripted company day. Support hands a $49 refund to Finance. Finance settles `billing.issue_refund` through the tool gateway and hands the work to Ops. Ops queues `ops.restart_service` for billing-api. The refund stays on the ledger. The restart stays queued until Approve, Reject, or Kill.
 
-> **Permit rule:** Approve / Reject / Kill is the closer. Default actors are scripted; live LLMs are optional. This is not a live EHS, health, or finance workforce. Same instinct: [SafetyMP](https://github.com/SafetyMP/SafetyMP).
+`POST /api/company-day` runs that day. It does not settle the restart, and it does not honor `autoApproveException` from the JSON body. An unauthenticated caller cannot auto-approve.
 
 [![CI](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/SafetyMP/CorpOS/badge)](https://scorecard.dev/viewer/?uri=github.com/SafetyMP/CorpOS)
 [![License: Apache-2.0](https://img.shields.io/github/license/SafetyMP/CorpOS)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)](#quick-start)
-
-CorpOS simulates a company day: department actors settle work contracts under a policy gate, and **humans govern by exception** (Approve / Reject / Kill in the ops console). Autonomy is earned from evidence, not granted in prompts. Interop protocols (MCP) are transport; firm-side governance includes **G1 membership** and **G4 dissent** today, with a broader G1–G6 crosswalk in the docs. Positioning: [`docs/DESIGN-PIVOT.md`](docs/DESIGN-PIVOT.md).
-
-> **Scope:** Reference architecture and runnable demo — **not** a production-hardened SaaS. See [SECURITY.md](SECURITY.md).
-
-Default mode is **simulation** (`SimulationProvider`) for deterministic CI. Live LLM (`HttpLLMProvider`) is an optional actor inside the sim only when `CORPOS_ALLOW_LIVE=1` and `OPENROUTER_API_KEY` are set — `/api/health.mode` never lies. G1–G6 firm governance, orchestrator-driven day, TTL scheduler, console Bearer (shared mode), and live `/api/events` SSE are implemented.
-
-Read the thesis: [`docs/future-of-the-firm.md`](docs/future-of-the-firm.md). Governance crosswalk: [`docs/governance-crosswalk.md`](docs/governance-crosswalk.md). AIBOM: [`docs/aibom.json`](docs/aibom.json). Docs index: [`docs/README.md`](docs/README.md).
 
 **Jump to:** [Demo](#demo) · [Quick start](#quick-start) · [Architecture](#architecture) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [ADRs](docs/adr/README.md)
 
@@ -37,7 +29,7 @@ Read the thesis: [`docs/future-of-the-firm.md`](docs/future-of-the-firm.md). Gov
 - **Local demo:** `npm install && npm run build && npm run dev` → [http://localhost:3000](http://localhost:3000)
 - **Regenerate GIF/PNGs:** start the console, then `npm run screenshots` — see [`docs/assets/README.md`](docs/assets/README.md)
 
-Click **Run company day** to watch the agent activity timeline: support → finance → ops handoffs, an autonomous settle, an exception approval path, compensation, and trust unlock. The console sends `autoApproveException: false` so the exception stays in the HITL queue for Approve/Reject.
+Click **Run company day** to watch the activity timeline: support → finance → ops. The refund stays in place. The service restart stays queued until Approve, Reject, or Kill.
 
 ---
 
@@ -53,7 +45,7 @@ Contributors and CI should use `npm ci --include=dev` (see [CONTRIBUTING.md](CON
 
 ```bash
 npm test
-npm run scenario                 # HITL default-off; exits non-zero when exception is not auto-settled
+npm run scenario                 # default day exits 0: refund stays, restart stays queued
 npm run audit:verify
 ./scripts/harness/verify.sh      # functional / static acceptance
 ./scripts/harness/adversarial.sh # authorized local adversarial probes (CI also runs this)
