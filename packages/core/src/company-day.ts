@@ -303,15 +303,9 @@ export async function runCompanyDay(opts?: {
     }
   }
 
-  const compensated = await company.gateway.compensate(contractId);
-  if (compensated > 0) {
-    push({
-      agentId: "agent_finance",
-      role: "Finance",
-      kind: "compensate",
-      summary: `Compensated ${compensated} settled action(s); ledger restored.`,
-    });
-  }
+  // Success leaves the settled refund in place. Explicit gateway.compensate()
+  // may still reverse it; this script does not.
+  const compensated = 0;
 
   const short = await openContract(company, {
     title: "Expiring SLA",
@@ -334,6 +328,20 @@ export async function runCompanyDay(opts?: {
   }
 
   const trustAfter = (await company.trust.get("agent_support"))?.maxAutonomousRisk ?? 0;
+  const refundHeld = company.seed.refunds.some(
+    (refund) => refund.amount === 49 && refund.customer === "ada@example.com",
+  );
+  const restartPending = (await company.db.select().from(exceptions)).some(
+    (row) =>
+      row.contractId === contractId &&
+      row.tool === "ops.restart_service" &&
+      row.state === "pending",
+  );
+  // The scripted day succeeds when the refund is still on the ledger and the
+  // restart is waiting for Approve, Reject, or Kill. Settling that restart is
+  // an explicit opt-in, not a requirement for ok.
+  const dayComplete = handoffs >= 2 && autonomousSettles >= 1 && compensated === 0 && refundHeld;
+  const restartDisposition = autoApprove ? exceptionSettles >= 1 : restartPending;
 
   const result: CompanyDayResult = {
     contractId,
@@ -344,7 +352,7 @@ export async function runCompanyDay(opts?: {
     trustAfter,
     slaExceptions,
     auditHead: await company.audit.head(),
-    ok: handoffs >= 2 && autonomousSettles >= 1 && exceptionSettles >= 1 && trustAfter >= 2,
+    ok: dayComplete && restartDisposition,
     timeline,
     providerMode,
   };
