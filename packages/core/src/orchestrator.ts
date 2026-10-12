@@ -118,7 +118,7 @@ export class Orchestrator {
       systemPrompt: `You are ${agent.role} for CorpOS.`,
       userPrompt: task.description,
       originatingAuthority: agent.owner,
-      delegationDepth: 0,
+      delegationDepth: task.delegationDepth ?? 0,
     });
 
     endSpan(span, {

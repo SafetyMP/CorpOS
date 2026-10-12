@@ -373,6 +373,26 @@ export async function recordTransparency(
   });
 }
 
+function approverLabels(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw || "[]") as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/** NIST SP 800-53 AC-5: a quorum vote counts only from the designated role, and the eligible pool must be at least M. */
+function holdsQuorumRole(agent: { role: string; approverRoles: string }, role: string): boolean {
+  return agent.role === role || approverLabels(agent.approverRoles).includes(role);
+}
+
+function voterIs(agent: { id: string; owner: string; principal: string }, by: string): boolean {
+  return agent.id === by || agent.owner === by || agent.principal === by;
+}
+
 export async function decideException(
   company: Company,
   exceptionId: string,
@@ -393,7 +413,31 @@ export async function decideException(
 
   const quorum = company.policy.getQuorumConfig(ex.riskLevel);
   if (decision === "approved" && quorum) {
+    const roster = (await company.db.select().from(agents)).filter(
+      (agent) => agent.active === 1 && holdsQuorumRole(agent, quorum.role),
+    );
+    if (roster.length < quorum.m || roster.length < quorum.n) {
+      await company.audit.append("exception.quorum_pool", {
+        exceptionId,
+        role: quorum.role,
+        pool: roster.length,
+        need: quorum.n,
+        of: quorum.m,
+      });
+      return { quorumPending: true, votes: 0 };
+    }
+    const voter = roster.find((agent) => voterIs(agent, by));
     const votes = JSON.parse(ex.votesJson || "[]") as Array<{ by: string; at: string }>;
+    if (!voter) {
+      await company.audit.append("exception.quorum_rejected_voter", {
+        exceptionId,
+        by,
+        role: quorum.role,
+        votes: votes.length,
+        need: quorum.n,
+      });
+      return { quorumPending: true, votes: votes.length };
+    }
     if (!votes.some((v) => v.by === by)) {
       votes.push({ by, at: now() });
     }
@@ -407,6 +451,7 @@ export async function decideException(
         by,
         votes: votes.length,
         need: quorum.n,
+        of: quorum.m,
       });
       return { quorumPending: true, votes: votes.length };
     }
@@ -440,23 +485,38 @@ export async function decideException(
   publishFirmEvent(`exception.${decision}`, { exceptionId, by });
 
   if (decision === "approved" && ex.pauseJson) {
-    const tool = company.gateway.get(ex.tool);
-    if (tool) {
-      await tool.execute(JSON.parse(ex.argsJson), {
+    const pause = JSON.parse(ex.pauseJson) as { depth?: unknown; delegatedBy?: unknown };
+    const gated = await company.gateway.executeApproved(
+      ex.tool,
+      JSON.parse(ex.argsJson) as Record<string, unknown>,
+      {
         agentId: ex.agentId,
         taskId: ex.taskId,
         contractId: ex.contractId,
         tenantId: ex.tenantId,
         originatingAuthority: by,
-        delegationDepth: 0,
-      });
+        delegationDepth: typeof pause.depth === "number" ? pause.depth : 0,
+        delegatedBy: typeof pause.delegatedBy === "string" ? pause.delegatedBy : undefined,
+      },
+    );
+    if (gated.decision.effect === "deny" || !gated.result?.ok) {
       await company.db
         .update(tasks)
-        .set({ state: "done", finishedAt: now() })
+        .set({
+          state: "failed",
+          finishedAt: now(),
+          error: gated.decision.reason,
+        })
         .where(eq(tasks.id, ex.taskId));
-      company.orchestrator?.resume(ex.taskId, true);
-      return { resumed: true, executed: true };
+      company.orchestrator?.resume(ex.taskId, false);
+      return { resumed: true, executed: false };
     }
+    await company.db
+      .update(tasks)
+      .set({ state: "done", finishedAt: now() })
+      .where(eq(tasks.id, ex.taskId));
+    company.orchestrator?.resume(ex.taskId, true);
+    return { resumed: true, executed: true };
   } else if (decision === "rejected") {
     await company.db
       .update(tasks)

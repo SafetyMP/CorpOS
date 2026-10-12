@@ -21,13 +21,19 @@ export async function elicitViaException(
   if (!ex) return { ok: false, error: "exception not found" };
 
   if (opts?.autoDecide) {
-    await decideException(
+    const result = await decideException(
       company,
       exceptionId,
       opts.autoDecide,
       opts.by ?? "elicitation",
       opts.autoDecide === "rejected" ? "elicitation reject" : undefined,
     );
+    if (result.quorumPending) {
+      return { ok: false, error: "quorum pending" };
+    }
+    if (opts.autoDecide === "approved" && !result.executed) {
+      return { ok: false, error: "approval did not execute" };
+    }
     return { ok: true, decision: opts.autoDecide };
   }
 

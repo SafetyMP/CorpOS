@@ -4,7 +4,15 @@ import type { AuditLog } from "./audit.js";
 import type { PolicyEngine } from "./policy.js";
 import type { Tool, ToolContext, ToolResult, PolicyDecision } from "./types.js";
 import type { ToolMap } from "./tools.js";
-import { compensators, controlState, departments, drafts, spendLedger, agents } from "./schema.js";
+import {
+  agents,
+  compensators,
+  controlState,
+  departments,
+  drafts,
+  spendLedger,
+  tasks,
+} from "./schema.js";
 import { newId } from "./id.js";
 import { now } from "./types.js";
 import { endSpan, startSpan } from "./otel.js";
@@ -54,13 +62,7 @@ export class ToolGateway {
     endSpan(span, { decisionId: decision.decisionId });
 
     if (decision.effect === "deny") {
-      const agent = (await this.db.select().from(agents).where(eq(agents.id, ctx.agentId)))[0];
-      if (agent) {
-        await this.db
-          .update(agents)
-          .set({ violations: agent.violations + 1 })
-          .where(eq(agents.id, agent.id));
-      }
+      await this.recordViolation(ctx.agentId);
       return { decision };
     }
     if (decision.effect === "approve") {
@@ -91,11 +93,32 @@ export class ToolGateway {
     return { decision, result: await this.execute(name, args, ctx) };
   }
 
+  /**
+   * PEP for an already-approved exception. Re-checks policy (kill switch,
+   * authz, capital cap) and executes only when that check does not deny.
+   */
+  async executeApproved(
+    name: string,
+    args: Record<string, unknown>,
+    ctx: ToolContext,
+  ): Promise<GatewayInvokeResult> {
+    return this.enforce(name, args, ctx);
+  }
+
   async settleDraft(draftId: string, ctx: ToolContext): Promise<ToolResult> {
     const draft = (await this.db.select().from(drafts).where(eq(drafts.id, draftId)))[0];
     if (!draft || draft.state !== "staged") return { ok: false, error: "draft not found" };
     const args = JSON.parse(draft.argsJson) as Record<string, unknown>;
-    const result = await this.execute(draft.tool, args, ctx);
+    const gated = await this.enforce(draft.tool, args, ctx);
+    if (gated.decision.effect === "deny" || !gated.result) {
+      await this.audit.append("draft.settle_denied", {
+        draftId,
+        tool: draft.tool,
+        reason: gated.decision.reason,
+      });
+      return { ok: false, error: gated.decision.reason };
+    }
+    const result = gated.result;
     await this.db
       .update(drafts)
       .set({ state: "settled", settledAt: now() })
@@ -125,21 +148,32 @@ export class ToolGateway {
         args: Record<string, unknown>;
         result: ToolResult;
       };
-      const tool = this.tools.get(c.kind);
-      if (!tool) continue;
-      await tool.execute(
-        {
-          ...payload.args,
-          refundId: (payload.result.data as { refundId?: string } | undefined)?.refundId,
-          amount: payload.args.amount,
-        },
-        {
-          agentId: "system",
-          taskId: "compensate",
-          contractId,
-          tenantId: "default",
-        },
-      );
+      const execArgs = {
+        ...payload.args,
+        refundId: (payload.result.data as { refundId?: string } | undefined)?.refundId,
+        amount: payload.args.amount,
+      };
+      const draft = (await this.db.select().from(drafts).where(eq(drafts.id, c.draftId)))[0];
+      const task = draft?.taskId
+        ? (await this.db.select().from(tasks).where(eq(tasks.id, draft.taskId)))[0]
+        : undefined;
+      const delegationDepth = typeof task?.delegationDepth === "number" ? task.delegationDepth : 0;
+      const ctx: ToolContext = {
+        agentId: draft?.agentId ?? "agent_finance",
+        taskId: draft?.taskId ?? "compensate",
+        contractId,
+        tenantId: draft?.tenantId ?? "default",
+        delegationDepth,
+      };
+      const gated = await this.enforce(c.kind, execArgs, ctx);
+      if (gated.decision.effect === "deny" || !gated.result) {
+        await this.audit.append("compensate.denied", {
+          compensatorId: c.id,
+          kind: c.kind,
+          reason: gated.decision.reason,
+        });
+        continue;
+      }
       await this.db
         .update(compensators)
         .set({ state: "run", runAt: now() })
@@ -166,6 +200,38 @@ export class ToolGateway {
         .where(eq(controlState.id, "global"));
     }
     await this.audit.append("kill.switch", { killed });
+  }
+
+  /** Second PDP check. Deny skips execution; allow/draft/approve from the ladder does not. */
+  private async enforce(
+    name: string,
+    args: Record<string, unknown>,
+    ctx: ToolContext,
+  ): Promise<GatewayInvokeResult> {
+    const tool = this.tools.get(name);
+    const decision = await this.policy.evaluate(tool, args, ctx, "enforce");
+    await this.audit.append("gateway.decision", {
+      tool: name,
+      effect: decision.effect,
+      reason: decision.reason,
+      decisionId: decision.decisionId,
+      authzLayer: decision.authzLayer,
+      phase: "enforce",
+    });
+    if (decision.effect === "deny") {
+      await this.recordViolation(ctx.agentId);
+      return { decision };
+    }
+    return { decision, result: await this.execute(name, args, ctx) };
+  }
+
+  private async recordViolation(agentId: string): Promise<void> {
+    const agent = (await this.db.select().from(agents).where(eq(agents.id, agentId)))[0];
+    if (!agent) return;
+    await this.db
+      .update(agents)
+      .set({ violations: agent.violations + 1 })
+      .where(eq(agents.id, agent.id));
   }
 
   private async execute(

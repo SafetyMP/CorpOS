@@ -46,6 +46,7 @@ export const tasks = sqliteTable("tasks", {
   state: text("state").notNull(),
   assignedTo: text("assigned_to"),
   attempts: integer("attempts").notNull().default(0),
+  delegationDepth: integer("delegation_depth").notNull().default(0),
   createdAt: text("created_at").notNull(),
   startedAt: text("started_at"),
   finishedAt: text("finished_at"),

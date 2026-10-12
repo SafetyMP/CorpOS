@@ -40,8 +40,8 @@ export type QuorumConfig = { n: number; m: number; role: string };
 export class PolicyEngine {
   private rules: PolicyRule[] = [];
   private mode: EnforcementMode = "strict";
-  /** riskLevel → quorum (G3). Default: L4+ requires 2-of-3 approvers when enabled. */
-  private quorumByRisk = new Map<number, QuorumConfig>();
+  /** riskLevel → quorum (G3). L4+ defaults to 2-of-3 approvers (NIST SP 800-53 AC-5). */
+  private quorumByRisk = new Map<number, QuorumConfig>([[4, { n: 2, m: 3, role: "approver" }]]);
 
   constructor(
     private db: Db,
@@ -87,6 +87,13 @@ export class PolicyEngine {
     tool: Tool | undefined,
     args: Record<string, unknown>,
     ctx: ToolContext,
+    /**
+     * `propose` is the first PDP check (may stage a draft or queue HITL).
+     * `enforce` is the PEP re-check immediately before execution: kill switch,
+     * authz, deny rules, and capital cap still apply, but a prior draft or
+     * human approval is not turned into another draft or exception.
+     */
+    phase: "propose" | "enforce" = "propose",
   ): Promise<PolicyDecision> {
     const ctrl = (
       await this.db.select().from(controlState).where(eq(controlState.id, "global"))
@@ -171,6 +178,15 @@ export class PolicyEngine {
           decisionId: authz.decisionId,
         };
       }
+    }
+
+    if (phase === "enforce") {
+      return {
+        effect: "allow",
+        reason: "enforcement re-check allow",
+        decisionId: authz.decisionId,
+        authzLayer: authz.layer,
+      };
     }
 
     const effect =
