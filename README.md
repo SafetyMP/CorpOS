@@ -84,3 +84,8 @@ Reference architecture — not production-hardened. `DASHBOARD_API_TOKEN` is req
 ## License
 
 Apache-2.0 — Copyright © 2026 SafetyMP.
+
+
+## Documentation map
+
+[docs/README.md](docs/README.md) is the documentation index. Community policy files are the root `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `SECURITY.md`.

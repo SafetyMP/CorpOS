@@ -23,5 +23,4 @@ operations excellence reviews current evidence. Work in isolated roots, never ed
 corporate approval state, and never self-approve.
 
 Site id: `corpos`. Prior Cursor Harness v4 is under `_archives/harness-v4/`.
-Product company-day demos must not auto-approve exceptions unless a test/CI
-caller passes `autoApproveException: true` explicitly.
+`POST /api/company-day` ignores `autoApproveException`. Tests pass that flag only to the in-process `runCompanyDay` helper.

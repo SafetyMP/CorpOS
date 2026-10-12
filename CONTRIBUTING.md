@@ -1,9 +1,6 @@
 # Contributing to CorpOS
 
-Thanks for your interest in improving CorpOS — a reference implementation of an
-autonomous company (firm model, work contracts, and a policy-gated control
-plane). This document explains how to set up the project and what is expected of
-a contribution.
+Thanks for your interest in improving CorpOS — a company-day simulation (firm model, work contracts, and a tool gateway). It is not an agent framework and not production SaaS. This document explains how to set up the project and what is expected of a contribution.
 
 ## Reference posture (read first)
 
@@ -46,8 +43,7 @@ npm run scenario       # HITL default-off; exits non-zero unless exception is au
 npm run audit:verify
 ```
 
-Headless company-day settles that must exit 0 need `autoApproveException: true`
-(used in tests). Product demos and the ops console keep it `false`.
+`POST /api/company-day` ignores `autoApproveException`. Tests that must settle headless call `runCompanyDay` with `autoApproveException: true`. The ops console does not.
 
 ## Architecture rules (must respect)
 

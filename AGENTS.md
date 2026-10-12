@@ -31,9 +31,9 @@ A change is not done until `./scripts/harness/verify.sh` is green.
 
 ## Hard rules
 
-- **Never auto-approve exceptions** unless a test/CI caller passes
-  `autoApproveException: true` explicitly. Product demos and the ops console
-  keep it `false`.
+- **Never auto-approve from HTTP.** `POST /api/company-day` ignores
+  `autoApproveException`. Tests may pass that flag to the in-process
+  `runCompanyDay` helper only.
 - **Never live LLM in CI.** Default provider is `SimulationProvider`.
   `CORPOS_ALLOW_LIVE` and `OPENROUTER_API_KEY` must stay unset in verify and CI.
 - Do not add LangGraph, CrewAI, or other graph/crew runtimes to “keep up.”
