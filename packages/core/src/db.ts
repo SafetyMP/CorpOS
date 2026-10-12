@@ -60,6 +60,7 @@ async function migrate(client: Client): Promise<void> {
       state TEXT NOT NULL,
       assigned_to TEXT,
       attempts INTEGER NOT NULL DEFAULT 0,
+      delegation_depth INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       started_at TEXT,
       finished_at TEXT,
@@ -168,6 +169,7 @@ async function migrate(client: Client): Promise<void> {
     "ALTER TABLE exceptions ADD COLUMN appeal_used INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE exceptions ADD COLUMN appealed_at TEXT",
     "ALTER TABLE exceptions ADD COLUMN votes_json TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE tasks ADD COLUMN delegation_depth INTEGER NOT NULL DEFAULT 0",
   ]) {
     try {
       await client.execute(sql);

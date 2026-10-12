@@ -30,6 +30,8 @@ export interface CompanyDayResult {
   contractId: string;
   handoffs: number;
   autonomousSettles: number;
+  /** Human-queued irreversible actions (restart) still waiting on Approve, Reject, or Kill. */
+  awaitingExceptions: number;
   exceptionSettles: number;
   compensated: number;
   trustAfter: number;
@@ -38,6 +40,12 @@ export interface CompanyDayResult {
   ok: boolean;
   timeline: TimelineEvent[];
   providerMode: "simulation" | "live";
+}
+
+function draftSettleOk(step: unknown): boolean {
+  if (typeof step !== "object" || !step || !("draftSettled" in step)) return false;
+  const result = (step as { result?: { ok?: boolean } }).result;
+  return result?.ok === true;
 }
 
 function countHandoffs(steps: unknown[]): number {
@@ -50,15 +58,23 @@ function countHandoffs(steps: unknown[]): number {
 async function latestHandoff(
   company: Company,
   contractId: string,
-): Promise<{ toAgent: string; obligation: string; from: string } | null> {
+): Promise<{ toAgent: string; obligation: string; from: string; depth: number } | null> {
   const ctr = (await company.db.select().from(contracts).where(eq(contracts.id, contractId)))[0];
   if (!ctr) return null;
   const obligations = JSON.parse(ctr.obligations || "[]") as Array<{
     toAgent: string;
     obligation: string;
     from: string;
+    depth?: number;
   }>;
-  return obligations.length ? obligations[obligations.length - 1]! : null;
+  const last = obligations.length ? obligations[obligations.length - 1]! : null;
+  if (!last) return null;
+  return {
+    toAgent: last.toAgent,
+    obligation: last.obligation,
+    from: last.from,
+    depth: typeof last.depth === "number" ? last.depth : 0,
+  };
 }
 
 async function enqueueAgentTask(
@@ -68,6 +84,7 @@ async function enqueueAgentTask(
     agentId: string;
     title: string;
     description: string;
+    delegationDepth: number;
   },
 ): Promise<string> {
   const taskId = newId("task");
@@ -80,6 +97,7 @@ async function enqueueAgentTask(
     state: "queued",
     assignedTo: opts.agentId,
     attempts: 0,
+    delegationDepth: opts.delegationDepth,
     createdAt: now(),
   });
   return taskId;
@@ -218,9 +236,10 @@ export async function runCompanyDay(opts?: {
     agentId: "agent_finance",
     title: "Settle refund",
     description: finHandoff?.obligation ?? "Settle the refund obligation and hand off to ops.",
+    delegationDepth: finHandoff?.depth ?? 0,
   });
   const finance = await company.orchestrator.enqueueAndRun(financeTaskId);
-  if (finance.steps.some((s) => typeof s === "object" && s && "draftSettled" in s)) {
+  if (finance.steps.some(draftSettleOk)) {
     autonomousSettles++;
     push({
       agentId: "agent_finance",
@@ -246,16 +265,11 @@ export async function runCompanyDay(opts?: {
     agentId: "agent_ops",
     title: "Confirm service health",
     description: opsHandoff?.obligation ?? "Restart billing-api if needed.",
+    delegationDepth: opsHandoff?.depth ?? 0,
   });
 
-  let opsPromise: Promise<{
-    ok: boolean;
-    awaitingExceptionId?: string;
-    steps: unknown[];
-  }>;
-
   if (autoApprove) {
-    opsPromise = company.orchestrator.enqueueAndRun(opsTaskId);
+    const opsPromise = company.orchestrator.enqueueAndRun(opsTaskId);
     for (let i = 0; i < 200; i++) {
       const pending = (await company.db.select().from(exceptions)).find(
         (e) => e.state === "pending" && e.taskId === opsTaskId,
@@ -267,21 +281,29 @@ export async function runCompanyDay(opts?: {
           kind: "exception",
           summary: "Restart requires human approval — exception queued.",
         });
-        await decideException(company, pending.id, "approved", "carol@corpos.local");
-        exceptionSettles++;
-        push({
-          agentId: "agent_ops",
-          role: "Ops",
-          kind: "exception",
-          summary: "Demo auto-approved restart (explicit opt-in); billing-api restarted.",
-        });
-        await company.trust.recordAccept("agent_support");
-        push({
-          agentId: "agent_support",
-          role: "Support",
-          kind: "trust",
-          summary: "Clean accepts raised Support maxAutonomousRisk.",
-        });
+        const quorum = company.policy.getQuorumConfig(pending.riskLevel);
+        const voters = ["alice@corpos.local", "bob@corpos.local", "carol@corpos.local"];
+        const needed = quorum ? quorum.n : 1;
+        let decided: { executed?: boolean } = {};
+        for (const voter of voters.slice(0, needed)) {
+          decided = await decideException(company, pending.id, "approved", voter);
+        }
+        if (decided.executed) {
+          exceptionSettles++;
+          push({
+            agentId: "agent_ops",
+            role: "Ops",
+            kind: "exception",
+            summary: "Demo auto-approved restart (explicit opt-in); billing-api restarted.",
+          });
+          await company.trust.recordAccept("agent_support");
+          push({
+            agentId: "agent_support",
+            role: "Support",
+            kind: "trust",
+            summary: "Clean accepts raised Support maxAutonomousRisk.",
+          });
+        }
         break;
       }
       await new Promise((r) => setTimeout(r, 5));
@@ -296,13 +318,11 @@ export async function runCompanyDay(opts?: {
         kind: "exception",
         summary: "Restart requires human approval — exception queued.",
       });
-      void (await company.db
-        .select()
-        .from(exceptions)
-        .where(eq(exceptions.id, ops.awaitingExceptionId)));
     }
   }
-
+  const awaitingExceptions = (await company.db.select().from(exceptions)).filter(
+    (e) => e.contractId === contractId && e.state === "pending" && e.tool === "ops.restart_service",
+  ).length;
   // Success leaves the settled refund in place. Explicit gateway.compensate()
   // may still reverse it; this script does not.
   const compensated = 0;
@@ -347,6 +367,7 @@ export async function runCompanyDay(opts?: {
     contractId,
     handoffs,
     autonomousSettles,
+    awaitingExceptions,
     exceptionSettles,
     compensated,
     trustAfter,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   appealException,
+  auditChain,
   createCompany,
   decideException,
   deliberationEntries,
@@ -12,7 +13,7 @@ import {
   transparencyRecords,
 } from "@corpos/core";
 import { eq } from "drizzle-orm";
-import { exceptions, tasks } from "@corpos/core";
+import { agents, exceptions, tasks } from "@corpos/core";
 
 describe("r3 firm governance", () => {
   it("quorum policy test: L4+ requires N-of-M approvers (R-FIRM-005)", async () => {
@@ -45,6 +46,42 @@ describe("r3 firm governance", () => {
     expect(second.executed || second.resumed).toBeTruthy();
     const done = (await company.db.select().from(exceptions).where(eq(exceptions.id, exId)))[0];
     expect(done?.state).toBe("approved");
+    company.close();
+  });
+
+  it("ignores a voter outside the quorum role and refuses a pool smaller than M", async () => {
+    const company = await createCompany({ dbPath: ":memory:" });
+    company.policy.setQuorumForRisk(4, { n: 2, m: 3, role: "approver" });
+    const provider = new SimulationProvider({
+      "Ops Agent": [[tc("ops.restart_service", { service: "billing-api" })]],
+    });
+    company.orchestrator = new Orchestrator(company, { provider, awaitHitl: false });
+    await company.db.insert(tasks).values({
+      id: "task_role",
+      contractId: "c_role",
+      tenantId: "default",
+      title: "restart",
+      description: "restart",
+      state: "queued",
+      assignedTo: "agent_ops",
+      attempts: 0,
+      createdAt: new Date().toISOString(),
+    });
+    const out = await company.orchestrator.enqueueAndRun("task_role");
+    const exId = out.awaitingExceptionId!;
+    const stranger = await decideException(company, exId, "approved", "mallory@example.com");
+    expect(stranger.quorumPending).toBe(true);
+    expect(stranger.votes).toBe(0);
+    const pending = (await company.db.select().from(exceptions).where(eq(exceptions.id, exId)))[0];
+    expect(pending?.state).toBe("pending");
+    expect(JSON.parse(pending?.votesJson || "[]")).toEqual([]);
+
+    await company.db.update(agents).set({ active: 0 }).where(eq(agents.id, "agent_finance"));
+    const shrunk = await decideException(company, exId, "approved", "alice@corpos.local");
+    expect(shrunk.quorumPending).toBe(true);
+    expect(shrunk.executed).toBeFalsy();
+    const still = (await company.db.select().from(exceptions).where(eq(exceptions.id, exId)))[0];
+    expect(still?.state).toBe("pending");
     company.close();
   });
 
@@ -98,6 +135,7 @@ describe("r3 firm governance", () => {
       createdAt: new Date().toISOString(),
     });
     const out = await company.orchestrator.enqueueAndRun("task_t");
+    await decideException(company, out.awaitingExceptionId!, "approved", "alice@corpos.local");
     await decideException(company, out.awaitingExceptionId!, "approved", "carol@corpos.local");
     const tr = await company.db.select().from(transparencyRecords);
     expect(tr.length).toBeGreaterThanOrEqual(1);
@@ -172,6 +210,44 @@ describe("r3 firm governance", () => {
     company.close();
   });
 
+  it("approved exception still passes the PEP kill switch", async () => {
+    const company = await createCompany({ dbPath: ":memory:" });
+    const provider = new SimulationProvider({
+      "Ops Agent": [[tc("ops.restart_service", { service: "billing-api" })]],
+    });
+    company.orchestrator = new Orchestrator(company, { provider, awaitHitl: false });
+    await company.db.insert(tasks).values({
+      id: "task_kill",
+      contractId: "c_kill",
+      tenantId: "default",
+      title: "restart",
+      description: "restart",
+      state: "queued",
+      assignedTo: "agent_ops",
+      attempts: 0,
+      createdAt: new Date().toISOString(),
+    });
+    const out = await company.orchestrator.enqueueAndRun("task_kill");
+    expect(out.awaitingExceptionId).toBeTruthy();
+    await company.gateway.setKilled(true);
+    await decideException(company, out.awaitingExceptionId!, "approved", "alice@corpos.local");
+    const decided = await decideException(
+      company,
+      out.awaitingExceptionId!,
+      "approved",
+      "carol@corpos.local",
+    );
+    expect(decided.executed).toBe(false);
+    const rows = await company.db.select().from(auditChain);
+    const ran = rows.filter(
+      (r) => r.eventType === "tool.execute" && r.payloadJson.includes("ops.restart_service"),
+    );
+    expect(ran).toHaveLength(0);
+    const task = (await company.db.select().from(tasks).where(eq(tasks.id, "task_kill")))[0];
+    expect(task?.state).toBe("failed");
+    company.close();
+  });
+
   it("orchestrator waitForResume on HITL (R-WORK-005)", async () => {
     const company = await createCompany({ dbPath: ":memory:" });
     const provider = new SimulationProvider({
@@ -195,6 +271,7 @@ describe("r3 firm governance", () => {
         (e) => e.state === "pending",
       );
       if (pending) {
+        await decideException(company, pending.id, "approved", "alice@corpos.local");
         await decideException(company, pending.id, "approved", "carol@corpos.local");
         break;
       }
@@ -227,8 +304,12 @@ describe("r3 firm governance", () => {
       autoDecide: "approved",
       by: "elicit",
     });
-    expect(elicited.ok).toBe(true);
-    expect(elicited.decision).toBe("approved");
+    expect(elicited.ok).toBe(false);
+    expect(elicited.error).toBe("quorum pending");
+    const still = (await company.db.select().from(exceptions)).find(
+      (row) => row.id === out.awaitingExceptionId,
+    );
+    expect(still?.state).toBe("pending");
     company.close();
   });
 });

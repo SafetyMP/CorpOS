@@ -65,7 +65,7 @@ describe("governance", () => {
   it("company day on shared store mutates firm panels see", async () => {
     resetSpans();
     const company = await createCompany({ dbPath: ":memory:" });
-    const { result } = await runCompanyDay({ company, autoApproveException: true });
+    const { result } = await runCompanyDay({ company });
     expect(result.ok).toBe(true);
     expect(result.handoffs).toBeGreaterThanOrEqual(2);
     const rows = await company.db.select().from(contracts);

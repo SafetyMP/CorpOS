@@ -183,10 +183,10 @@ export function buildApp(company: Company, mode: "simulation" | "live" = "simula
   });
 
   app.post("/api/company-day", async (c) => {
+    if (!requireAuth(c)) return c.json({ error: "dashboard authentication required" }, 401);
     await expireExceptionTtl(company);
-    // The JSON body cannot settle the restart. autoApproveException is ignored
-    // for every caller, including an unauthenticated one. Approve, Reject, or
-    // Kill is what moves a queued restart.
+    // Dashboard auth is required. The JSON body cannot settle the restart:
+    // autoApproveException is ignored. Approve, Reject, or Kill moves the queue.
     const { result } = await runCompanyDay({ company });
     return c.json(result);
   });
