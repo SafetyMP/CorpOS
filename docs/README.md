@@ -13,3 +13,8 @@ Public docs for the company-day simulation reference. Not a certification claim.
 | [assets/README.md](assets/README.md) | Regenerating README demo GIF/PNGs |
 
 Contributor setup: [../CONTRIBUTING.md](../CONTRIBUTING.md). Security posture: [../SECURITY.md](../SECURITY.md).
+
+
+## Canonical community files
+
+`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `SECURITY.md` are at the repository root. This repository does not keep a second copy under `.github/`, because GitHub would show that copy instead of the root file.

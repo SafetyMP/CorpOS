@@ -2,8 +2,7 @@
 
 ## Status: reference architecture
 
-CorpOS is a **reference implementation of an autonomous company**, not a production SaaS.
-Treat it as a design artifact you can run locally.
+CorpOS is a **company-day simulation** (firm model, work contracts, and a tool gateway). It is not an agent framework and not production SaaS.
 
 ## Guarantees (within local trust boundary)
 
@@ -18,8 +17,8 @@ Treat it as a design artifact you can run locally.
   not per-user OIDC.
 - G3 quorum, G6 appeal, and enforcement `strict`/`audit` modes.
 - Hash-chained audit receipts (`npm run audit:verify`).
-- Company-day demos do not auto-approve exceptions unless a caller passes
-  `autoApproveException: true` (tests/CI only).
+- `POST /api/company-day` ignores `autoApproveException`. The refund stays on the ledger and the restart stays queued until Approve, Reject, or Kill.
+- The in-process helper `runCompanyDay` still honors `autoApproveException: true` for tests. The HTTP route does not pass that flag through.
 
 ## Not provided
 
@@ -57,6 +56,5 @@ static token compare for demos, not an OAuth flow.
 
 ## Reporting a Vulnerability
 
-Use GitHub Security Advisories on the CorpOS repository for **vulnerabilities**
-([`.github/SECURITY.md`](.github/SECURITY.md)). Conduct issues are handled under
+Use [GitHub Security Advisories](https://github.com/SafetyMP/CorpOS/security/advisories/new) for **vulnerabilities**. Conduct issues are handled under
 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), not security advisories.

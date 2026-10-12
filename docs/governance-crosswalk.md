@@ -6,7 +6,7 @@ Pedagogical mapping only — **not** a certification claim.
 
 | Function | CorpOS control |
 | --- | --- |
-| GOVERN | ToolGateway PEP + Rego-shaped three-layer PDP (`strict` default; `audit` via env/API) |
+| GOVERN | ToolGateway PEP + TypeScript three-layer checks in `packages/core/src/authz.ts` (`strict` default; `audit` via env/API). No Cedar engine and no Rego runtime |
 | MAP | `docs/aibom.json` inventory of agents, models, tools, MCP servers |
 | MEASURE | OTel GenAI spans (`invoke_agent`, `execute_tool`, `chat`) + trust ledger |
 | MANAGE | Exception HITL, kill switch, compensators, capital caps, appeal (G6) |

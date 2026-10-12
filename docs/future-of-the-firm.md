@@ -1,6 +1,6 @@
 # Future of the Firm
 
-CorpOS is a **reference implementation of an autonomous company**. The thesis:
+CorpOS is a **company-day simulation**. The thesis:
 
 > Autonomy is an organizational design problem. Future companies are policy + authority + capital + trust + exception queues + **community governance** — not chatbots with tools.
 
@@ -9,11 +9,11 @@ CorpOS is a **reference implementation of an autonomous company**. The thesis:
 1. **Firm model** — org graph, membership (G1), deliberation (G2), quorum (G3), dissent (G4), transparency (G5), appeal (G6), capital, SLAs.
 2. **Work model** — work contracts, handoffs with delegation envelopes, draft→settle, compensating actions, orchestrator `enqueueAndRun` / `waitForResume`.
 3. **Control plane** — MCP-gated tools (+ elicitation), fail-closed risk ladder, durable HITL, kill/budgets, run traces, TTL scheduler.
-4. **Governance plane** — PEP (ToolGateway) + Rego-shaped PDP, three-layer authz, strict/audit modes, OTel GenAI (+ optional OTLP), AIBOM, OWASP ASI / NIST AI RMF crosswalk.
+4. **Governance plane** — PEP (ToolGateway) plus TypeScript three-layer checks in `packages/core/src/authz.ts`. There is no Cedar engine and no Rego runtime. Strict and audit modes, OTel GenAI (+ optional OTLP), AIBOM, and the OWASP ASI / NIST AI RMF crosswalk sit beside that.
 
 Interop protocols (MCP, optional A2A later) are **transport**. They do not encode community governance — CorpOS does.
 
-Humans govern **by exception** in the ops console (Approve / Reject / Kill). Autonomy is **earned** from evidence (trust ledger), not granted in prompts. Company-day demos keep `autoApproveException` off unless a test/CI caller opts in.
+Humans govern **by exception** in the ops console (Approve / Reject / Kill). Autonomy is **earned** from evidence (trust ledger), not granted in prompts. `POST /api/company-day` ignores `autoApproveException`. Tests pass that flag only to `runCompanyDay`.
 
 ## 20-minute path
 

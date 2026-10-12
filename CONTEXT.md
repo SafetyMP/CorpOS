@@ -1,7 +1,6 @@
 # Project context
 
-CorpOS is the open reference implementation of an autonomous company:
-firm model + work contracts + control plane + governance plane (July 2026).
+CorpOS is a company-day simulation: firm model, work contracts, and a tool gateway. It is not an agent framework and not production SaaS.
 
 Workspaces: `packages/core`, `packages/mcp-knowledge`, `apps/api`, `apps/console`.
 
