@@ -1,4 +1,6 @@
-# CorpOS
+# CorpOS: Company-Day Simulation with Agent Governance
+
+A reference company-day simulation for agent handoffs, policy decision points (PDP), policy enforcement points (PEP) and human approval. Inspect a scripted support, finance and operations workflow; live language-model calls are optional and disabled by default.
 
 One scripted company day. Support hands a $49 refund to Finance. Finance settles `billing.issue_refund` through the tool gateway and hands the work to Ops. Ops queues `ops.restart_service` for billing-api. The refund stays on the ledger. The restart stays queued until Approve, Reject, or Kill.
 
