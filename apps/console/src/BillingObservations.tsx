@@ -11,18 +11,15 @@ export function BillingObservations({ selection, change }: CaseProps) {
   const selectRecord = (next: RecordKey) =>
     change(
       next === "probe" && selection.observed === "no"
-        ? { record: next, observed: "yes", route: "none" }
+        ? { record: next, observed: "yes", route: "none", decision: "none", votes: "one" }
         : { record: next },
     );
   const replay = (next: Capture) =>
     change({ capture: next, route: "none", decision: "none", votes: "one" });
   return (
     <div class="observation-desk">
-      <h3>What else is failing?</h3>
-      <p class="case-note">
-        Synthetic observations, 09:00–09:05 UTC. Inspect the records before routing the
-        investigation.
-      </p>
+      <h3>Evidence from the three teams</h3>
+      <p class="case-note">Each record answers a different question about the same morning.</p>
       <div class="record-select" role="group" aria-label="Inspect an observation">
         {(Object.keys(records) as RecordKey[]).map((key) => (
           <button

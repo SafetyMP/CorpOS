@@ -1149,3 +1149,150 @@ ul {
     font-size: 0.8rem;
   }
 }
+
+.shift-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(17rem, 1fr);
+  gap: clamp(1.5rem, 5vw, 4.5rem);
+  align-items: center;
+  padding: clamp(2rem, 5vw, 4rem) 0;
+}
+.shift-header h1 {
+  font:
+    600 clamp(2.6rem, 5.4vw, 4.8rem)/1.02 "IBM Plex Sans",
+    system-ui,
+    sans-serif;
+  max-width: 12ch;
+}
+.shift-header p {
+  max-width: 60ch;
+}
+.ownership-map {
+  margin: 0;
+  background: #14253a;
+  padding: 1.35rem 1.5rem;
+  border-top: 3px solid #56e6fa;
+}
+.ownership-map figcaption {
+  font-weight: 600;
+  margin: 0 0 1.15rem;
+}
+.ownership-map ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ownership-map li {
+  position: relative;
+  padding: 0 0 1.25rem 1.25rem;
+  border-left: 1px solid #648aa6;
+  margin-left: 0.3rem;
+}
+.ownership-map li:last-child {
+  border-color: transparent;
+  padding-bottom: 0;
+}
+.ownership-map li::before {
+  content: "";
+  position: absolute;
+  background: #7ceadb;
+  width: 0.6rem;
+  height: 0.6rem;
+  left: -0.34rem;
+  top: 0.38rem;
+  border-radius: 50%;
+}
+.ownership-map span {
+  display: block;
+  color: #c2d4e7;
+}
+.case-brief p {
+  max-width: 78ch;
+}
+.case-open {
+  margin-top: 0.5rem;
+}
+.case-page details.case-sources {
+  margin-top: 1.5rem;
+  padding: 1rem;
+}
+.case-preset button {
+  margin: 0 0.5rem 0.35rem 0;
+}
+.case-preset button[aria-pressed="true"] {
+  border-color: var(--case-signal);
+}
+.mandate-controls,
+.policy-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 1rem 0;
+}
+.mandate-controls label,
+.policy-guide label {
+  display: grid;
+  font-weight: 600;
+  gap: 0.4rem;
+}
+.mandate-controls select,
+.policy-guide select {
+  font: inherit;
+  border: 1px solid #78879d;
+  border-radius: 0.25rem;
+  color: #eff6ff;
+  background: #122139;
+  padding: 0.55rem;
+}
+.mandate-receipt ol {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  list-style: none;
+  gap: 0.55rem;
+  margin: 0.75rem 0;
+  padding: 0;
+}
+.mandate-receipt li,
+.policy-rail div {
+  background: #182840;
+  padding: 0.6rem 0.85rem;
+  border-left: 2px solid #70889d;
+}
+.mandate-receipt li[data-result="approve"] {
+  border-color: #ffca76;
+}
+.mandate-receipt li[data-result="deny"] {
+  border-color: #f19a97;
+}
+.mandate-receipt li b {
+  display: block;
+  font-size: 0.9rem;
+}
+.mandate-receipt a {
+  margin-right: 1rem;
+}
+.guide-tabs {
+  margin: 1rem 0;
+}
+.mandate .desk-wrap {
+  max-width: 68rem;
+}
+.policy-rail dt {
+  font-size: 0.88rem;
+  color: #c6cbd9;
+}
+.policy-rail dd {
+  margin: 0.2rem 0 0;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .shift-header,
+  .mandate-controls,
+  .policy-rail {
+    grid-template-columns: 1fr;
+  }
+  .mandate-receipt ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

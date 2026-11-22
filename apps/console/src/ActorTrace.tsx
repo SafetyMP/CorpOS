@@ -16,7 +16,7 @@ export function ActorTrace({
     <section class="trace-panel" aria-labelledby="trace-heading">
       <div class="trace-heading">
         <div>
-          <p class="desk-label">Contract / billing-01</p>
+          <p class="desk-label">Ada’s billing contract</p>
           <h2 id="trace-heading">Request trace</h2>
         </div>
         <span>6 calls · $49 refund</span>
