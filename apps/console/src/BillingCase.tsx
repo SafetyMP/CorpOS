@@ -1,396 +1,197 @@
 import { useState } from "preact/hooks";
 import { BillingObservations } from "./BillingObservations";
-
-const decisions = {
-  hold: {
-    label: "Keep it queued",
-    result: "The restart waits for an operator.",
-    evidence:
-      "The restart stays available for later review. The team can investigate the service and payment records while the tool request waits.",
-  },
-  approve: {
-    label: "Cast an approval vote",
-    result: "One eligible vote. The restart stays queued.",
-    evidence:
-      "The default risk-4 rule requires two distinct votes from a roster of at least three eligible approvers. Repeating the first vote adds nothing. Only a second eligible voter can complete the quorum.",
-  },
-  reject: {
-    label: "Reject the request",
-    result: "The restart task ends without execution.",
-    evidence:
-      "Record the reason for declining this change. The chosen investigation can continue independently of the restart request.",
-  },
-};
-
-type Decision = keyof typeof decisions;
-
-const assumptions = [
-  {
-    key: "volume",
-    label: "Eligible cases in 30 days",
-    min: 1,
-    max: 100000,
-    step: 1,
-    initial: "180",
-  },
-  {
-    key: "minutes",
-    label: "Net minutes saved per case",
-    min: -480,
-    max: 480,
-    step: 0.1,
-    initial: "4",
-  },
-  {
-    key: "rate",
-    label: "Loaded labor cost ($/hour)",
-    min: 1,
-    max: 10000,
-    step: 0.01,
-    initial: "60",
-  },
-  {
-    key: "cost",
-    label: "30-day pilot cost ($)",
-    min: 0,
-    max: 10000000,
-    step: 0.01,
-    initial: "900",
-  },
-] as const;
-
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2,
-});
-
-function Pilot() {
-  const [values, setValues] = useState<Record<string, string>>(
-    Object.fromEntries(assumptions.map((a) => [a.key, a.initial])),
-  );
-  const valid = assumptions.every((a) => {
-    const value = Number(values[a.key]);
-    return (
-      values[a.key]?.trim() &&
-      Number.isFinite(value) &&
-      value >= a.min &&
-      value <= a.max &&
-      (a.key !== "volume" || Number.isInteger(value))
-    );
-  });
-  const volume = Number(values.volume),
-    rate = Number(values.rate),
-    cost = Number(values.cost);
-  const hours = (volume * Number(values.minutes)) / 60;
-  const threshold = (cost * 60) / (volume * rate);
-  const capacity = hours * rate;
-  const chartScale = Math.max(Math.abs(capacity), cost, 1);
-  const contributions = [
-    { label: "Staff capacity", value: capacity },
-    { label: "Pilot spend", value: cost === 0 ? 0 : -cost },
-  ];
-
-  return (
-    <section class="case-block" aria-labelledby="pilot-title" id="pilot">
-      <p class="case-kicker">Platform engineering lead</p>
-      <h2 id="pilot-title">Would the handoff pay for a pilot?</h2>
-      <p>
-        As the platform engineering lead, partner with billing developers and their on-call team.
-        Compare today’s manual handoffs and a checklist in the existing ticket queue with a 30-day
-        shadow pilot that drafts handoffs while staff retain control.
-      </p>
-      <div class="case-calculator">
-        <div class="case-inputs">
-          {assumptions.map((a) => (
-            <label key={a.key}>
-              {a.label}
-              <input
-                type="number"
-                min={a.min}
-                max={a.max}
-                step={a.step}
-                value={values[a.key]}
-                onInput={(e) => setValues({ ...values, [a.key]: e.currentTarget.value })}
-              />
-            </label>
-          ))}
-        </div>
-        <div class="case-result" aria-live="polite" aria-atomic="true">
-          {valid ? (
-            <>
-              <p>Net capacity value over 30 days</p>
-              <strong>{money.format(capacity - cost)}</strong>
-              <figure class="cost-figure">
-                <figcaption>Contribution to net value</figcaption>
-                {contributions.map(({ label, value }) => (
-                  <div class="cost-row" key={label}>
-                    <div>
-                      <span>{label}</span>
-                      <span>
-                        {value > 0 ? "+" : ""}
-                        {money.format(value)}
-                      </span>
-                    </div>
-                    <div class="cost-axis" aria-hidden="true">
-                      <i
-                        class={value < 0 ? "debit" : "credit"}
-                        style={{ width: `${(Math.abs(value) / chartScale) * 50}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </figure>
-              <p>
-                {hours.toLocaleString("en-US", { maximumFractionDigits: 2 })} staff hours ×{" "}
-                {money.format(rate)}/hour, less {money.format(cost)} in pilot costs. Break-even
-                requires{" "}
-                <b>{threshold.toLocaleString("en-US", { maximumFractionDigits: 2 })} minutes</b> per
-                case.
-              </p>
-            </>
-          ) : (
-            <p>
-              Enter a whole number of eligible cases and a value within the range of each field to
-              calculate the result.
-            </p>
-          )}
-        </div>
-      </div>
-      <p class="case-note">
-        Illustrative inputs. Use paired handling times net of review and rework. Include setup and
-        operating costs. The result values available staff time. Finance must identify how the team
-        would use that capacity.
-      </p>
-      <details>
-        <summary>What would justify continuing?</summary>
-        <p>
-          Time comparable cases under the manual process, the checklist and the shadow pilot. Record
-          staff minutes, duplicate refunds, missed escalations and time to a service-owner decision.
-          Compare the pilot with the better existing option. Continue only if measured time clears
-          the break-even point and reviewers can account for every proposed restart. Suspend the
-          pilot if it initiates a change outside its shadow scope.
-        </p>
-      </details>
-    </section>
-  );
-}
-
-const handoffs = {
-  support: {
-    team: "Support",
-    action: "Check Ada’s subscription",
-    status: "Handed to Finance",
-    tool: "crm.lookup",
-    detail:
-      "Support looks up the customer, checks refund guidance and assigns Finance the $49 refund obligation.",
-  },
-  finance: {
-    team: "Finance",
-    action: "Issue the $49 refund",
-    status: "Settled on ledger",
-    tool: "billing.issue_refund",
-    detail:
-      "Finance settles the refund and asks Ops to confirm service health. The refund receipt establishes the customer transaction. Billing service health still needs independent evidence.",
-  },
-  ops: {
-    team: "Ops",
-    action: "Restart billing-api",
-    status: "Queued for review",
-    tool: "ops.restart_service",
-    detail: "",
-  },
-} as const;
-type Stage = keyof typeof handoffs;
+import {
+  controls,
+  effectLabels,
+  recordedMandate,
+  replay,
+  type Effect,
+  type Mandate,
+} from "./billing-observations";
 
 export function BillingCase() {
-  const [stage, setStage] = useState<Stage>("ops");
-  const [decision, setDecision] = useState<Decision | null>(null);
-  const [secondVote, setSecondVote] = useState(false);
-  const picked =
-    decision === "approve" && secondVote
-      ? {
-          result: "Two eligible votes. The gateway rechecks.",
-          evidence:
-            "The second distinct vote satisfies the default quorum. The gateway can still block execution if the kill switch is engaged or policy denies the action. The on-call engineer checks service telemetry even when a tool receipt confirms the restart.",
-        }
-      : decision
-        ? decisions[decision]
-        : null;
+  const [selected, setSelected] = useState(0);
+  const [draft, setDraft] = useState<Mandate>(recordedMandate);
+  const [applied, setApplied] = useState<Mandate | null>(null);
+  const [decision, setDecision] = useState("");
+  const rows = applied && replay(applied);
+  const changed = rows?.filter((r) => r.recorded !== r.candidate) ?? [];
+  const reviews = rows?.filter((r) => r.candidate === "approve").length ?? 0;
+  const denied = rows?.filter((r) => r.candidate === "deny").length ?? 0;
+  const repeat = () => {
+    setApplied({ ...draft });
+    setDecision("");
+  };
+
   return (
-    <div class="case-page">
-      <div class="case-wrap">
-        <nav aria-label="Case navigation">
+    <div class="mandate">
+      <div class="desk-wrap">
+        <nav class="desk-nav" aria-label="CorpOS navigation">
           <strong>CorpOS</strong>
-          <span class="case-nav-links">
-            <a href="#guide">Technical guide</a>
-            <a href="#ops">Open ops console</a>
-          </span>
+          <span>Platform engineering</span>
+          <a href="#guide">Technical reference ↗</a>
         </nav>
         <main>
-          <header class="case-header">
+          <div class="desk-intro">
             <div>
-              <p class="case-kicker">On-call desk · Company-day simulation</p>
-              <h1>Billing handoff</h1>
-              <p>
-                Finance settled Ada’s refund and asked for a health check. Ops wants to restart the
-                shared billing service.
+              <p class="desk-label">Delegation policy simulator</p>
+              <h1>Who signs for the agent?</h1>
+              <p class="desk-lede">
+                Trace a billing contract across three agents as Operations requests a restart of a
+                shared service. As the platform owner, decide which requests deserve a human
+                signature before you pilot the policy.
               </p>
             </div>
-          </header>
-          <ol class="case-route" aria-label="Company-day handoff timeline">
-            {(Object.keys(handoffs) as Stage[]).map((key) => {
-              const entry = handoffs[key];
-              let status: string = entry.status;
-              if (key === "ops" && decision === "reject") status = "Request rejected";
-              if (key === "ops" && decision === "approve")
-                status = secondVote ? "Gateway recheck" : "Queued · 1 of 2 votes";
-              return (
-                <li key={key}>
-                  <button
-                    type="button"
-                    aria-pressed={stage === key}
-                    onClick={() => setStage(key)}
-                    class="case-stage"
-                  >
-                    <span class="case-stage-team">{entry.team}</span>
-                    <strong>{entry.action}</strong>
-                    <span class={key === "ops" ? "case-state ops-state" : "case-state"}>
-                      {status}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-          {stage !== "ops" && (
-            <section class="case-block" aria-label={handoffs[stage].team + " handoff details"}>
-              <p class="case-kicker">{handoffs[stage].team} · Handoff record</p>
-              <h2>{handoffs[stage].action}</h2>
-              <code>{handoffs[stage].tool}</code>
-              <p>{handoffs[stage].detail}</p>
-              <button type="button" class="case-vote" onClick={() => setStage("ops")}>
-                Review Ops request
-              </button>
-            </section>
-          )}
-          <section
-            hidden={stage !== "ops"}
-            class="case-block case-work"
-            id="decision"
-            aria-labelledby="decision-title"
-          >
-            <p class="case-kicker">Ops · Risk 4 exception</p>
-            <h2 id="decision-title">Review the restart request</h2>
-            <p class="case-request">
-              <code>ops.restart_service</code> <span>target</span> <code>billing-api</code>
-            </p>
-            <BillingObservations
-              onCaptureChange={() => {
-                setDecision(null);
-                setSecondVote(false);
-              }}
-            />
-            <h3 class="restart-title">What should happen to the restart?</h3>
-            <div class="case-actions-layout">
-              <div>
-                <fieldset class="case-choices">
-                  <legend>Operator decision</legend>
-                  {(Object.keys(decisions) as Decision[]).map((key) => (
-                    <label key={key}>
-                      <input
-                        type="radio"
-                        name="restart"
-                        checked={decision === key}
-                        onChange={() => {
-                          setDecision(key);
-                          setSecondVote(false);
+          </div>
+          <div class="desk-spread">
+            <BillingObservations selected={selected} onSelect={setSelected} applied={applied} />
+            <div class="desk-work">
+              <section class="mandate-editor" aria-labelledby="mandate-title">
+                <p class="desk-label">Policy editor</p>
+                <h2 id="mandate-title">Draft a delegation mandate</h2>
+                <p>
+                  Start with the recorded rules. Change who can pass work, stage a credit or request
+                  a restart. The two read-only requests stay allowed.
+                </p>
+                <fieldset>
+                  <legend>Proposed rules</legend>
+                  {controls.map((c) => (
+                    <label key={c.key}>
+                      <span>{c.label}</span>
+                      <select
+                        value={draft[c.key]}
+                        onChange={(e) => {
+                          setDraft({ ...draft, [c.key]: e.currentTarget.value as Effect });
+                          setApplied(null);
+                          setDecision("");
                         }}
-                      />
-                      {decisions[key].label}
+                      >
+                        {c.options.map((o) => (
+                          <option key={o} value={o}>
+                            {effectLabels[o]}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                   ))}
                 </fieldset>
-                <div class="case-quorum" aria-label="Default restart approval path">
-                  <p>Approval path</p>
-                  {decision === "reject" ? (
-                    <p class="case-note">
-                      Closed. No votes or gateway recheck follow this rejection.
+                <div class="desk-actions">
+                  <button class="ink-button" type="button" onClick={repeat}>
+                    Replay six requests <span aria-hidden="true">→</span>
+                  </button>
+                  <button
+                    class="text-button"
+                    type="button"
+                    onClick={() => {
+                      setDraft(recordedMandate);
+                      setApplied(null);
+                      setDecision("");
+                      setSelected(0);
+                    }}
+                  >
+                    Reset to recorded rules
+                  </button>
+                </div>
+              </section>
+              {rows && applied && (
+                <section class="proof" aria-label="Replay proof">
+                  <div role="status">
+                    <p class="desk-label">Replay proof</p>
+                    <h2>{changed.length} of 6 dispositions changed</h2>
+                    <p>
+                      Each recorded request is evaluated independently. A denied handoff could
+                      prevent later work in a real run.
                     </p>
-                  ) : (
-                    <ol>
-                      <li class={decision === "approve" ? "vote-recorded" : ""}>
-                        First eligible vote{" "}
-                        <b>{decision === "approve" ? "Recorded" : "Required"}</b>
-                      </li>
-                      <li class={secondVote ? "vote-recorded" : ""}>
-                        Distinct second vote <b>{secondVote ? "Recorded" : "Required"}</b>
-                      </li>
-                      <li class={secondVote ? "vote-recorded" : ""}>
-                        Gateway recheck <b>{secondVote ? "Eligible" : "Waiting"}</b>
-                      </li>
-                    </ol>
-                  )}
-                </div>
-              </div>
-              {picked ? (
-                <div class="case-reading" aria-live="polite" aria-atomic="true">
-                  <h3>{picked.result}</h3>
-                  <p>{picked.evidence}</p>
-                  {decision === "approve" && (
-                    <button
-                      type="button"
-                      class="case-vote"
-                      onClick={() => setSecondVote(!secondVote)}
-                    >
-                      {secondVote ? "Return to one vote" : "Model a second eligible vote"}
-                    </button>
-                  )}
-                  <p class="case-note">
-                    Ledger effect in all three branches <b>· $49 refund retained</b>
+                  </div>
+                  <figure class="signature-map">
+                    <figcaption>Where the proposal sends work for a signature</figcaption>
+                    {["Support", "Finance", "Operations"].map((team) => {
+                      const teamRows = rows.filter((r) => r.team === team);
+                      const signatures = teamRows.filter((r) => r.candidate === "approve").length;
+                      return (
+                        <div class="signature-lane" key={team}>
+                          <strong>{team}</strong>
+                          <span class="signature-slots" aria-hidden="true">
+                            {teamRows.map((r) => (
+                              <i key={r.action} class={r.candidate === "approve" ? "signed" : ""} />
+                            ))}
+                          </span>
+                          <span>
+                            {signatures} of {teamRows.length}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </figure>
+                  <table>
+                    <caption>Request-by-request comparison</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Request</th>
+                        <th scope="col">Recorded</th>
+                        <th scope="col">Proposed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, i) => (
+                        <tr key={r.action} class={r.candidate !== r.recorded ? "amended" : ""}>
+                          <th scope="row">
+                            {i + 1}. {r.action}
+                          </th>
+                          <td>{effectLabels[r.recorded]}</td>
+                          <td>
+                            {effectLabels[r.candidate]}
+                            {r.candidate !== r.recorded && <small>Changed</small>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p class="review-cost">
+                    <b>
+                      {reviews} {reviews === 1 ? "request" : "requests"} would need human review
+                    </b>{" "}
+                    against 1 in the recorded day. {denied} would be denied. Each entry counts once,
+                    even when a quorum needs multiple votes.
                   </p>
-                </div>
-              ) : (
-                <p class="case-note">
-                  The risk-4 request is awaiting a decision. Investigating a service symptom does
-                  not authorize a tool action.
-                </p>
+                  <div class="signoff">
+                    <h3>Policy owner’s disposition</h3>
+                    <p>Choose which policy to carry into a supervised pilot.</p>
+                    <div class="desk-actions">
+                      <button
+                        type="button"
+                        aria-pressed={decision === "candidate"}
+                        onClick={() => setDecision("candidate")}
+                      >
+                        Take proposal to pilot
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={decision === "recorded"}
+                        onClick={() => setDecision("recorded")}
+                      >
+                        Keep recorded policy
+                      </button>
+                    </div>
+                    {decision && (
+                      <p role="status" class="filed">
+                        <strong>Review recorded locally</strong> ·{" "}
+                        {decision === "candidate" ? "Proposed mandate" : "Recorded mandate"}.{" "}
+                        {decision === "candidate" ? reviews : 1} of 6 requests routed to human
+                        review. {decision === "candidate" ? denied : 0} denied. Use another company
+                        day to test whether this oversight load holds.
+                      </p>
+                    )}
+                  </div>
+                </section>
               )}
             </div>
-            <p class="case-note">
-              These branches rehearse the policy in your browser. To inspect a simulator run, open
-              the <a href="#guide">technical guide</a>.
-            </p>
-          </section>
-          <Pilot />
-          <section class="case-block case-sources">
-            <h2>What informed this case</h2>
-            <p>
-              Google’s SRE practitioners describe assigning incident roles and keeping a working
-              record. Their monitoring guidance distinguishes user-visible symptoms from causes,
-              informing the comparison of a settled refund with independent service errors.{" "}
-              <a href="https://sre.google/workbook/incident-response/">Incident Response</a> ·{" "}
-              <a href="https://sre.google/sre-book/monitoring-distributed-systems/">
-                Monitoring Distributed Systems
-              </a>
-            </p>
-            <p>
-              The CNCF Platforms White Paper identifies platform leaders and partner application
-              teams as the people who jointly select early use cases and measure impact. That
-              informed the choice of pilot sponsor and the comparison with billing developers’
-              current workflow.{" "}
-              <a href="https://tag-app-delivery.cncf.io/whitepapers/platforms/">
-                CNCF Platforms White Paper
-              </a>
-            </p>
-            <p>
-              Google SRE’s approach to reducing repetitive operational work starts with measuring
-              time and comparing interventions. That informs the worksheet. Its prices and workload
-              come from the illustrative case.{" "}
-              <a href="https://sre.google/workbook/eliminating-toil/">Eliminating Toil</a>
-            </p>
-          </section>
+          </div>
         </main>
+        <footer>
+          Scripted company day. Replays stay in this browser session and do not apply policy to a
+          running firm. <a href="#guide">Architecture and sources</a>
+        </footer>
       </div>
     </div>
   );

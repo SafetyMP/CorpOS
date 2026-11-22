@@ -1,148 +1,81 @@
-import { useState } from "preact/hooks";
-import {
-  investigationReceipt,
-  serviceCaptures,
-  type Capture,
-  type Investigation,
-} from "./billing-observations";
+import { effectLabels, replay, requests, type Mandate } from "./billing-observations";
 
-const records = { ticket: "Customer report", ledger: "Refund ledger", probe: "Service samples" };
-type RecordKey = keyof typeof records;
+const teams = ["Support", "Finance", "Operations"];
 
-export function BillingObservations({ onCaptureChange }: { onCaptureChange: () => void }) {
-  const [record, setRecord] = useState<RecordKey>("ticket");
-  const [capture, setCapture] = useState<Capture>("A");
-  const [probeSeen, setProbeSeen] = useState(false);
-  const [choice, setChoice] = useState<Investigation | null>(null);
-  const receipt = investigationReceipt(choice, probeSeen ? capture : null);
-  const selectRecord = (next: RecordKey) => {
-    setRecord(next);
-    if (next === "probe" && !probeSeen) {
-      setProbeSeen(true);
-      setChoice(null);
-    }
-  };
-  const replay = (next: Capture) => {
-    setCapture(next);
-    setChoice(null);
-    onCaptureChange();
-  };
+export function BillingObservations({
+  selected,
+  onSelect,
+  applied,
+}: {
+  selected: number;
+  onSelect: (i: number) => void;
+  applied: Mandate | null;
+}) {
+  const active = requests[selected];
+  const result = applied && replay(applied)[selected];
   return (
-    <div class="observation-desk">
-      <h3>What else is failing?</h3>
-      <p class="case-note">
-        Synthetic observations, 09:00–09:05 UTC. Inspect the records before routing the
-        investigation.
-      </p>
-      <div class="record-select" role="group" aria-label="Inspect an observation">
-        {(Object.keys(records) as RecordKey[]).map((key) => (
-          <button
-            type="button"
-            aria-pressed={record === key}
-            onClick={() => selectRecord(key)}
-            key={key}
-          >
-            {records[key]}
-          </button>
-        ))}
-      </div>
-      <div class="observation-record" aria-live="polite">
-        {record === "ticket" && (
-          <>
-            <p class="record-meta">09:05 UTC · Support inbox</p>
-            <blockquote>
-              “I can see the $49 charge, but the credit still isn’t on my statement.”
-            </blockquote>
-            <p>
-              Ada reports one missing credit. Her ticket contains no processor posting confirmation.
-            </p>
-          </>
-        )}
-        {record === "ledger" && (
-          <>
-            <p class="record-meta">09:02 UTC · Finance ledger</p>
-            <dl class="ledger-observation">
-              <div>
-                <dt>Subscription</dt>
-                <dd>sub_ada_pro</dd>
-              </div>
-              <div>
-                <dt>Refund amount</dt>
-                <dd>$49.00</dd>
-              </div>
-              <div>
-                <dt>Ledger state</dt>
-                <dd>Settled</dd>
-              </div>
-              <div>
-                <dt>Bank posting</dt>
-                <dd>Unknown</dd>
-              </div>
-            </dl>
-          </>
-        )}
-        {record === "probe" && (
-          <>
-            <div class="capture-heading">
-              <p class="record-meta">billing-api · Other accounts</p>
-              <label>
-                Service capture{" "}
-                <select
-                  value={capture}
-                  onChange={(event) => replay(event.currentTarget.value as Capture)}
-                >
-                  <option value="A">Capture A</option>
-                  <option value="B">Capture B</option>
-                </select>
-              </label>
-            </div>
-            <figure class="probe-chart">
-              <figcaption>Failed requests in each sample of 100 · 0–20 chart scale</figcaption>
-              {serviceCaptures[capture].map((failures, i) => (
-                <div key={i} class="probe-row">
-                  <span>09:0{2 + i}</span>
-                  <span class="probe-track" aria-hidden="true">
-                    <i style={{ width: `${failures * 5}%` }} />
-                  </span>
-                  <b>{failures} / 100</b>
-                </div>
-              ))}
-            </figure>
-            <p class="case-note">
-              The usual range is 1–2 failures per 100. Switch captures to replay the same minutes
-              with different service counts for the same refund.
-            </p>
-          </>
-        )}
-      </div>
-      <fieldset class="case-choices investigation-choices">
-        <legend>Route the investigation</legend>
-        <label>
-          <input
-            type="radio"
-            name="route-investigation"
-            checked={choice === "payments"}
-            onChange={() => setChoice("payments")}
-          />
-          Trace Ada’s credit
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="route-investigation"
-            checked={choice === "incident"}
-            onChange={() => setChoice("incident")}
-          />
-          Page the incident lead
-        </label>
-      </fieldset>
-      {receipt && (
-        <div class="investigation-receipt" aria-live="polite">
-          <h4>Assigned to {receipt.owner}</h4>
-          <p>{receipt.assignment}</p>
-          <p>{receipt.assessment}</p>
+    <section class="trace-panel" aria-labelledby="trace-heading">
+      <div class="trace-heading">
+        <div>
+          <p class="desk-label">Contract / billing-01</p>
+          <h2 id="trace-heading">Request trace</h2>
         </div>
-      )}
-    </div>
+        <span>6 calls · $49 refund</span>
+      </div>
+      <div class="trace-console">
+        <div class="trace-board">
+          <p class="desk-hint">
+            Follow the call sequence across teams. Select a node for its request details.
+          </p>
+          <div class="trace-scale" aria-hidden="true">
+            <span>Actor</span>
+            <b>01</b>
+            <b>02</b>
+            <b>03</b>
+            <b>04</b>
+            <b>05</b>
+            <b>06</b>
+          </div>
+          {teams.map((team, teamIndex) => (
+            <div class="trace-lane" data-team={team} key={team}>
+              <span class="trace-actor">{team}</span>
+              {requests.map((r, i) =>
+                r.team === team ? (
+                  <button
+                    style={{ gridColumn: i + 2 }}
+                    key={r.action}
+                    type="button"
+                    aria-label={`Request ${i + 1}, ${r.team}, ${r.action}`}
+                    aria-pressed={i === selected}
+                    onClick={() => onSelect(i)}
+                  >
+                    <span class="trace-point" aria-hidden="true">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <strong>{r.action}</strong>
+                  </button>
+                ) : null,
+              )}
+              {teamIndex < 2 && (
+                <i
+                  class="handoff-connector"
+                  aria-hidden="true"
+                  style={{ gridColumn: teamIndex === 0 ? 4 : 6 }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        <div class="trace-inspector" aria-live="polite">
+          <p class="desk-label">
+            Request {String(selected + 1).padStart(2, "0")} / {active.team}
+          </p>
+          <h3>{active.action}</h3>
+          <code>{active.tool}</code>
+          <p>{active.evidence}</p>
+          {result && <small>Replay disposition · {effectLabels[result.candidate]}</small>}
+        </div>
+      </div>
+    </section>
   );
 }

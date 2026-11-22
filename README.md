@@ -18,16 +18,11 @@ One scripted company day. Support hands a $49 refund to Finance. Finance settles
 
 ## Demo
 
-**The billing handoff.** A $49 refund has settled and Ops wants to restart a shared service. At the [local demo](http://localhost:3000), inspect Ada’s report, the refund ledger and three synthetic error samples as the billing on-call engineer. Compare routing the same ticket to payments or to the incident lead under each service capture, then decide whether to hold, vote on or reject the restart. Compare one eligible vote with two distinct votes. As the platform engineering lead, weigh a pilot with the billing team. Inspect the working record in the [ops console](http://localhost:3000/#ops), then compare a shadow pilot with a checklist in the existing ticket queue. The [technical guide](http://localhost:3000/#guide) connects the browser case to the simulator and test evidence. The 30-day worksheet prices staff capacity using editable assumptions. Its inputs are illustrative.
+**Who signs for the agent?** Open the [delegation desk](http://localhost:3000) as the platform owner reviewing an automation pilot. Inspect six requests on a single billing contract, edit the rules for handoffs, refunds and service restarts, then replay the day. Compare each proposed disposition with the recorded policy before filing a pilot recommendation. The exercise uses a scripted trace and browser-local state.
 
-<p align="center">
-  <img src="docs/assets/demo.gif" alt="CorpOS ops console — agents hand off a company day (support → finance → ops), trust unlock, and Governor (synthetic demo data)" width="900" />
-</p>
+The [technical reference](http://localhost:3000/#guide) links the company-day script, policy gateway, counterfactual evaluator and audit verifier. Developers running the local API can separately open the [operator console](http://localhost:3000/#ops) or [Governor](http://localhost:3000/#governor).
 
-### Screenshots
-
-|             Ops             |               Company day               |               Governor                |
-| :-------------------------: | :-------------------------------------: | :-----------------------------------: |
+-------------------------: | :-------------------------------------: | :-----------------------------------: |
 | ![Ops](docs/assets/ops.png) | ![Company day](docs/assets/ops-day.png) | ![Governor](docs/assets/governor.png) |
 
 - **Local demo:** `npm install && npm run build && npm run dev` → [http://localhost:3000](http://localhost:3000)
