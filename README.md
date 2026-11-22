@@ -18,6 +18,8 @@ One scripted company day. Support hands a $49 refund to Finance. Finance settles
 
 ## Demo
 
+**The billing handoff.** A $49 refund has settled and Ops wants to restart a shared service. At the [local demo](http://localhost:3000), inspect Ada’s report, the refund ledger and three synthetic error samples as the billing on-call engineer. Compare routing the same ticket to payments or to the incident lead under each service capture, then decide whether to hold, vote on or reject the restart. Compare one eligible vote with two distinct votes. As the platform engineering lead, weigh a pilot with the billing team. Inspect the working record in the [ops console](http://localhost:3000/#ops), then compare a shadow pilot with a checklist in the existing ticket queue. The [technical guide](http://localhost:3000/#guide) connects the browser case to the simulator and test evidence. The 30-day worksheet prices staff capacity using editable assumptions. Its inputs are illustrative.
+
 <p align="center">
   <img src="docs/assets/demo.gif" alt="CorpOS ops console — agents hand off a company day (support → finance → ops), trust unlock, and Governor (synthetic demo data)" width="900" />
 </p>
@@ -31,7 +33,7 @@ One scripted company day. Support hands a $49 refund to Finance. Finance settles
 - **Local demo:** `npm install && npm run build && npm run dev` → [http://localhost:3000](http://localhost:3000)
 - **Regenerate GIF/PNGs:** start the console, then `npm run screenshots` — see [`docs/assets/README.md`](docs/assets/README.md)
 
-Click **Run company day** to watch the activity timeline: support → finance → ops. The refund stays in place. The service restart stays queued until Approve, Reject, or Kill.
+In the **ops console**, click **Run company day** to watch the activity timeline: support → finance → ops. The refund stays in place. The service restart stays queued until Approve, Reject, or Kill.
 
 ---
 
@@ -40,7 +42,7 @@ Click **Run company day** to watch the activity timeline: support → finance �
 ```bash
 npm install
 npm run build
-npm run dev        # ops console on $PORT or 3000
+npm run dev        # billing case and ops console on $PORT or 3000
 ```
 
 Contributors and CI should use `npm ci --include=dev` (see [CONTRIBUTING.md](CONTRIBUTING.md)).

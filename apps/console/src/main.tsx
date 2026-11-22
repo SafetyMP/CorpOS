@@ -1,5 +1,7 @@
 import { render } from "preact";
 import { useEffect, useState } from "preact/hooks";
+import { TechnicalGuide } from "./TechnicalGuide";
+import { BillingCase } from "./BillingCase";
 import "./styles.css";
 
 type Firm = {
@@ -70,7 +72,24 @@ function authHeaders(extra: Record<string, string> = {}): Record<string, string>
   return headers;
 }
 
-function App() {
+async function post<T>(path: string, body: object): Promise<T> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: authHeaders({ "content-type": "application/json" }),
+    body: JSON.stringify(body),
+  });
+  if (response.status === 401)
+    throw new Error(
+      "Dashboard credentials are required for this action. You can explore the billing case without signing in.",
+    );
+  if (!response.ok)
+    throw new Error(
+      `The simulator declined the request (HTTP ${response.status}). Refresh the queue before retrying.`,
+    );
+  return response.json() as Promise<T>;
+}
+
+function OpsConsole({ tab }: { tab: "ops" | "governor" }) {
   const [firm, setFirm] = useState<Firm | null>(null);
   const [exceptions, setExceptions] = useState<Exception[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -78,7 +97,7 @@ function App() {
   const [gov, setGov] = useState<Governance | null>(null);
   const [visibleCount, setVisibleCount] = useState(0);
   const [running, setRunning] = useState(false);
-  const [tab, setTab] = useState<"ops" | "governor">("ops");
+  const [notice, setNotice] = useState("");
   const [dissent, setDissent] = useState("");
   const [liveTimeline, setLiveTimeline] = useState<TimelineEvent[]>([]);
 
@@ -94,7 +113,9 @@ function App() {
   };
 
   useEffect(() => {
-    void refresh();
+    void refresh().catch(() =>
+      setNotice("Start the local CorpOS API to inspect the simulated company day."),
+    );
   }, []);
 
   useEffect(() => {
@@ -141,40 +162,50 @@ function App() {
     setVisibleCount(0);
     setLiveTimeline([]);
     try {
-      const r = (await fetch("/api/company-day", {
-        method: "POST",
-        headers: authHeaders({ "content-type": "application/json" }),
-        body: JSON.stringify({ autoApproveException: false }),
-      }).then((res) => res.json())) as CompanyDay;
-      setDay(r);
+      setNotice("");
+      const result = await post<CompanyDay>("/api/company-day", { autoApproveException: false });
+      setDay(result);
       await refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "The simulator could not run this day.");
     } finally {
       setRunning(false);
     }
   };
 
   const decide = async (id: string, decision: "approved" | "rejected") => {
-    await fetch(`/api/exceptions/${id}/decide`, {
-      method: "POST",
-      headers: authHeaders({ "content-type": "application/json" }),
-      body: JSON.stringify({
-        decision,
-        dissentReason: decision === "rejected" ? dissent || "rejected by operator" : undefined,
-      }),
-    });
-    setDissent("");
-    await refresh();
+    try {
+      const result = await post<{ quorumPending?: boolean; votes?: number; executed?: boolean }>(
+        `/api/exceptions/${id}/decide`,
+        {
+          decision,
+          dissentReason: decision === "rejected" ? dissent || "rejected by operator" : undefined,
+        },
+      );
+      if (result.quorumPending) {
+        setNotice(`Exception pending. Eligible approval votes recorded: ${result.votes ?? 0}.`);
+      } else if (decision === "approved" && result.executed === false) {
+        setNotice("Approval recorded. The gateway blocked execution.");
+      } else {
+        setNotice("The decision was recorded. Check the queue for the latest state.");
+      }
+      setDissent("");
+      await refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "The decision could not be submitted.");
+    }
   };
 
   const toggleKill = async () => {
     const next = !firm?.killed;
     if (next && !window.confirm("Engage kill switch? All tool invokes will deny.")) return;
-    await fetch("/api/kill", {
-      method: "POST",
-      headers: authHeaders({ "content-type": "application/json" }),
-      body: JSON.stringify({ killed: next }),
-    });
-    await refresh();
+    try {
+      await post("/api/kill", { killed: next });
+      await refresh();
+      setNotice(next ? "Kill switch engaged." : "Kill switch released.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "The kill switch could not be changed.");
+    }
   };
 
   const timelineDone = Boolean(day && visibleCount >= day.timeline.length);
@@ -184,7 +215,9 @@ function App() {
     <div class="shell">
       <header>
         <div>
-          <p class="eyebrow">CorpOS</p>
+          <p class="eyebrow">
+            CorpOS · <a href="#case">Billing case</a> · <a href="#guide">Technical guide</a>
+          </p>
           <h1>Autonomous company ops</h1>
           <p class="lede">
             Authority, capital, exceptions, and earned autonomy — humans govern by exception.
@@ -200,12 +233,16 @@ function App() {
           <button
             type="button"
             class="ghost"
-            onClick={() => setTab(tab === "ops" ? "governor" : "ops")}
+            onClick={() => {
+              window.location.hash = tab === "ops" ? "#governor" : "#ops";
+            }}
           >
             {tab === "ops" ? "Governor" : "Ops"}
           </button>
         </div>
       </header>
+
+      <p role="status">{notice}</p>
 
       {tab === "ops" ? (
         <main class="grid">
@@ -366,6 +403,29 @@ function App() {
         </main>
       )}
     </div>
+  );
+}
+
+function App() {
+  const [route, setRoute] = useState(window.location.hash);
+  useEffect(() => {
+    const onHashChange = () => {
+      const next = window.location.hash;
+      setRoute(next);
+      if (["#ops", "#governor", "#guide", "#case"].includes(next)) window.scrollTo(0, 0);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+  const consoleRoute = route === "#ops" || route === "#governor";
+  return (
+    <>
+      <div hidden={consoleRoute || route === "#guide"}>
+        <BillingCase />
+      </div>
+      {route === "#guide" && <TechnicalGuide />}
+      {consoleRoute && <OpsConsole tab={route === "#ops" ? "ops" : "governor"} />}
+    </>
   );
 }
 

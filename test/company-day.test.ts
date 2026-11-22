@@ -8,6 +8,7 @@ import {
   contracts,
   counterfactualReplay,
   createCompany,
+  decideException,
   departments,
   exceptions,
   runCompanyDay,
@@ -53,6 +54,43 @@ describe("company day", () => {
     const verify = await company.audit.verify();
     expect(verify.ok).toBe(true);
     company.close();
+  });
+
+  it("keeps the billing restart pending on a repeated vote and rechecks after a second eligible voter", async () => {
+    const { company, result } = await runCompanyDay({ dbPath: ":memory:" });
+    try {
+      const pending = (await company.db.select().from(exceptions)).find(
+        (row) => row.contractId === result.contractId && row.tool === "ops.restart_service",
+      );
+      if (!pending) throw new Error("billing restart missing from company day");
+      expect(pending.riskLevel).toBe(4);
+      expect(company.policy.getQuorumConfig(pending.riskLevel)).toEqual({
+        n: 2,
+        m: 3,
+        role: "approver",
+      });
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const firstVoter = await decideException(
+          company,
+          pending.id,
+          "approved",
+          "alice@corpos.local",
+        );
+        expect(firstVoter).toMatchObject({ quorumPending: true, votes: 1 });
+        expect(firstVoter.executed).toBeUndefined();
+      }
+      await company.gateway.setKilled(true);
+      const secondVoter = await decideException(
+        company,
+        pending.id,
+        "approved",
+        "bob@corpos.local",
+      );
+      expect(secondVoter).toMatchObject({ resumed: true, executed: false });
+      expect(company.seed.refunds.filter((item) => item.amount === 49)).toHaveLength(1);
+    } finally {
+      company.close();
+    }
   });
 
   it("settles an explicitly auto-approved restart and does not reverse the refund", async () => {
