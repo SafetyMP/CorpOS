@@ -28,35 +28,20 @@ export function BillingCase() {
       <div class="desk-wrap">
         <nav class="desk-nav" aria-label="CorpOS navigation">
           <strong>CorpOS</strong>
-          <span>Office of platform operations</span>
+          <span>Platform engineering</span>
           <a href="#guide">Technical reference ↗</a>
         </nav>
         <main>
           <div class="desk-intro">
             <div>
-              <p class="desk-label">Delegated authority / change review</p>
+              <p class="desk-label">Delegation policy simulator</p>
               <h1>Who signs for the agent?</h1>
               <p class="desk-lede">
-                A billing contract crosses three desks before Operations asks to restart a shared
-                service. As the platform owner, decide which requests deserve a human signature
-                before you pilot the policy.
+                Trace a billing contract across three agents as Operations requests a restart of a
+                shared service. As the platform owner, decide which requests deserve a human
+                signature before you pilot the policy.
               </p>
             </div>
-            <figure class="contract-slip">
-              <figcaption>
-                Work contract <b>Billing / 01</b>
-              </figcaption>
-              <div class="office-route" aria-label="Support hands work to Finance, then Operations">
-                <span>Support</span>
-                <i aria-hidden="true">→</i>
-                <span>Finance</span>
-                <i aria-hidden="true">→</i>
-                <span>Ops</span>
-              </div>
-              <p>
-                $49 refund <span>·</span> 6 recorded requests
-              </p>
-            </figure>
           </div>
           <div class="desk-spread">
             <BillingObservations selected={selected} onSelect={setSelected} applied={applied} />

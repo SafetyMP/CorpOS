@@ -22,6 +22,18 @@ try {
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${address.port}`);
     await page.getByRole("heading", { name: "Who signs for the agent?" }).waitFor();
+    assert.deepEqual(
+      await page
+        .locator(".trace-lane")
+        .evaluateAll((lanes) =>
+          lanes.map((lane) => [lane.dataset.team, lane.querySelectorAll("button").length]),
+        ),
+      [
+        ["Support", 3],
+        ["Finance", 2],
+        ["Operations", 1],
+      ],
+    );
     const proof = page.getByRole("region", { name: "Replay proof" });
     assert.equal(await proof.count(), 0);
     await page.getByRole("button", { name: /Assign Finance/ }).click();

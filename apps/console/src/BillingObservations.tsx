@@ -1,5 +1,7 @@
 import { effectLabels, replay, requests, type Mandate } from "./billing-observations";
 
+const teams = ["Support", "Finance", "Operations"];
+
 export function BillingObservations({
   selected,
   onSelect,
@@ -10,33 +12,70 @@ export function BillingObservations({
   applied: Mandate | null;
 }) {
   const active = requests[selected];
+  const result = applied && replay(applied)[selected];
   return (
-    <div class="trace-panel">
-      <h2>Contract trace</h2>
-      <p class="desk-hint">Select a request to inspect its authority and obligation.</p>
-      <ol class="trace-list" aria-label="Recorded tool requests">
-        {requests.map((r, i) => (
-          <li key={r.action}>
-            <button type="button" aria-pressed={i === selected} onClick={() => onSelect(i)}>
-              <span class="trace-number">{String(i + 1).padStart(2, "0")}</span>
-              <span>
-                <small>{r.team}</small>
-                <strong>{r.action}</strong>
-              </span>
-              <span class="trace-symbol" aria-hidden="true">
-                {i === selected ? "●" : "○"}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ol>
-      <div class="trace-inspector" aria-live="polite">
-        <code>{active.tool}</code>
-        <p>{active.evidence}</p>
-        {applied && (
-          <small>Replay disposition · {effectLabels[replay(applied)[selected].candidate]}</small>
-        )}
+    <section class="trace-panel" aria-labelledby="trace-heading">
+      <div class="trace-heading">
+        <div>
+          <p class="desk-label">Contract / billing-01</p>
+          <h2 id="trace-heading">Request trace</h2>
+        </div>
+        <span>6 calls · $49 refund</span>
       </div>
-    </div>
+      <div class="trace-console">
+        <div class="trace-board">
+          <p class="desk-hint">
+            Follow the call sequence across teams. Select a node for its request details.
+          </p>
+          <div class="trace-scale" aria-hidden="true">
+            <span>Actor</span>
+            <b>01</b>
+            <b>02</b>
+            <b>03</b>
+            <b>04</b>
+            <b>05</b>
+            <b>06</b>
+          </div>
+          {teams.map((team, teamIndex) => (
+            <div class="trace-lane" data-team={team} key={team}>
+              <span class="trace-actor">{team}</span>
+              {requests.map((r, i) =>
+                r.team === team ? (
+                  <button
+                    style={{ gridColumn: i + 2 }}
+                    key={r.action}
+                    type="button"
+                    aria-label={`Request ${i + 1}, ${r.team}, ${r.action}`}
+                    aria-pressed={i === selected}
+                    onClick={() => onSelect(i)}
+                  >
+                    <span class="trace-point" aria-hidden="true">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <strong>{r.action}</strong>
+                  </button>
+                ) : null,
+              )}
+              {teamIndex < 2 && (
+                <i
+                  class="handoff-connector"
+                  aria-hidden="true"
+                  style={{ gridColumn: teamIndex === 0 ? 4 : 6 }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        <div class="trace-inspector" aria-live="polite">
+          <p class="desk-label">
+            Request {String(selected + 1).padStart(2, "0")} / {active.team}
+          </p>
+          <h3>{active.action}</h3>
+          <code>{active.tool}</code>
+          <p>{active.evidence}</p>
+          {result && <small>Replay disposition · {effectLabels[result.candidate]}</small>}
+        </div>
+      </div>
+    </section>
   );
 }
