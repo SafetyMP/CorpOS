@@ -21,9 +21,11 @@ export function TechnicalGuide() {
               <div>
                 <dt>Browser case</dt>
                 <dd>
-                  The handoff timeline and voting controls rehearse authored branches in memory. The
-                  worksheet calculates staff capacity from your inputs. Neither surface submits work
-                  to the simulator.
+                  The customer quote, posting status and 09:02–09:04 service counts are authored
+                  observations. The capture selector changes only the failed-request series.
+                  Investigation assignments and votes stay in browser memory. The worksheet
+                  calculates staff capacity from your inputs. Neither surface submits work to the
+                  simulator.
                 </dd>
               </div>
               <div>

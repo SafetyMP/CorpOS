@@ -1,11 +1,12 @@
 import { useState } from "preact/hooks";
+import { BillingObservations } from "./BillingObservations";
 
 const decisions = {
   hold: {
     label: "Keep it queued",
     result: "The restart waits for an operator.",
     evidence:
-      "Request billing error rates and a service-owner assessment. The handoff asks Ops to confirm service health. It supplies no evidence that a restart would fix a fault.",
+      "The restart stays available for later review. The team can investigate the service and payment records while the tool request waits.",
   },
   approve: {
     label: "Cast an approval vote",
@@ -17,7 +18,7 @@ const decisions = {
     label: "Reject the request",
     result: "The restart task ends without execution.",
     evidence:
-      "Record why this change lacks a service-health justification. Support can close the refund issue while the service owner investigates the billing service separately.",
+      "Record the reason for declining this change. The chosen investigation can continue independently of the restart request.",
   },
 };
 
@@ -204,7 +205,7 @@ type Stage = keyof typeof handoffs;
 
 export function BillingCase() {
   const [stage, setStage] = useState<Stage>("ops");
-  const [decision, setDecision] = useState<Decision>("hold");
+  const [decision, setDecision] = useState<Decision | null>(null);
   const [secondVote, setSecondVote] = useState(false);
   const picked =
     decision === "approve" && secondVote
@@ -213,7 +214,9 @@ export function BillingCase() {
           evidence:
             "The second distinct vote satisfies the default quorum. The gateway can still block execution if the kill switch is engaged or policy denies the action. The on-call engineer checks service telemetry even when a tool receipt confirms the restart.",
         }
-      : decisions[decision];
+      : decision
+        ? decisions[decision]
+        : null;
   return (
     <div class="case-page">
       <div class="case-wrap">
@@ -260,7 +263,7 @@ export function BillingCase() {
               );
             })}
           </ol>
-          {stage !== "ops" ? (
+          {stage !== "ops" && (
             <section class="case-block" aria-label={handoffs[stage].team + " handoff details"}>
               <p class="case-kicker">{handoffs[stage].team} · Handoff record</p>
               <h2>{handoffs[stage].action}</h2>
@@ -270,59 +273,67 @@ export function BillingCase() {
                 Review Ops request
               </button>
             </section>
-          ) : (
-            <section class="case-block case-work" id="decision" aria-labelledby="decision-title">
-              <p class="case-kicker">Ops · Risk 4 exception</p>
-              <h2 id="decision-title">Review the restart request</h2>
-              <p class="case-request">
-                <code>ops.restart_service</code> <span>target</span> <code>billing-api</code>
-              </p>
-              <p>
-                As billing’s on-call engineer, check whether there is an incident to escalate. The
-                service owner needs error telemetry. An incident commander coordinates the response
-                if an incident is declared.
-              </p>
-              <div class="case-actions-layout">
-                <div>
-                  <fieldset class="case-choices">
-                    <legend>Operator decision</legend>
-                    {(Object.keys(decisions) as Decision[]).map((key) => (
-                      <label key={key}>
-                        <input
-                          type="radio"
-                          name="restart"
-                          checked={decision === key}
-                          onChange={() => {
-                            setDecision(key);
-                            setSecondVote(false);
-                          }}
-                        />
-                        {decisions[key].label}
-                      </label>
-                    ))}
-                  </fieldset>
-                  <div class="case-quorum" aria-label="Default restart approval path">
-                    <p>Approval path</p>
-                    {decision === "reject" ? (
-                      <p class="case-note">
-                        Closed. No votes or gateway recheck follow this rejection.
-                      </p>
-                    ) : (
-                      <ol>
-                        <li class={decision === "approve" ? "vote-recorded" : ""}>
-                          First eligible vote{" "}
-                          <b>{decision === "approve" ? "Recorded" : "Required"}</b>
-                        </li>
-                        <li class={secondVote ? "vote-recorded" : ""}>
-                          Distinct second vote <b>{secondVote ? "Recorded" : "Required"}</b>
-                        </li>
-                        <li class={secondVote ? "vote-recorded" : ""}>
-                          Gateway recheck <b>{secondVote ? "Eligible" : "Waiting"}</b>
-                        </li>
-                      </ol>
-                    )}
-                  </div>
+          )}
+          <section
+            hidden={stage !== "ops"}
+            class="case-block case-work"
+            id="decision"
+            aria-labelledby="decision-title"
+          >
+            <p class="case-kicker">Ops · Risk 4 exception</p>
+            <h2 id="decision-title">Review the restart request</h2>
+            <p class="case-request">
+              <code>ops.restart_service</code> <span>target</span> <code>billing-api</code>
+            </p>
+            <BillingObservations
+              onCaptureChange={() => {
+                setDecision(null);
+                setSecondVote(false);
+              }}
+            />
+            <h3 class="restart-title">What should happen to the restart?</h3>
+            <div class="case-actions-layout">
+              <div>
+                <fieldset class="case-choices">
+                  <legend>Operator decision</legend>
+                  {(Object.keys(decisions) as Decision[]).map((key) => (
+                    <label key={key}>
+                      <input
+                        type="radio"
+                        name="restart"
+                        checked={decision === key}
+                        onChange={() => {
+                          setDecision(key);
+                          setSecondVote(false);
+                        }}
+                      />
+                      {decisions[key].label}
+                    </label>
+                  ))}
+                </fieldset>
+                <div class="case-quorum" aria-label="Default restart approval path">
+                  <p>Approval path</p>
+                  {decision === "reject" ? (
+                    <p class="case-note">
+                      Closed. No votes or gateway recheck follow this rejection.
+                    </p>
+                  ) : (
+                    <ol>
+                      <li class={decision === "approve" ? "vote-recorded" : ""}>
+                        First eligible vote{" "}
+                        <b>{decision === "approve" ? "Recorded" : "Required"}</b>
+                      </li>
+                      <li class={secondVote ? "vote-recorded" : ""}>
+                        Distinct second vote <b>{secondVote ? "Recorded" : "Required"}</b>
+                      </li>
+                      <li class={secondVote ? "vote-recorded" : ""}>
+                        Gateway recheck <b>{secondVote ? "Eligible" : "Waiting"}</b>
+                      </li>
+                    </ol>
+                  )}
                 </div>
+              </div>
+              {picked ? (
                 <div class="case-reading" aria-live="polite" aria-atomic="true">
                   <h3>{picked.result}</h3>
                   <p>{picked.evidence}</p>
@@ -339,21 +350,29 @@ export function BillingCase() {
                     Ledger effect in all three branches <b>· $49 refund retained</b>
                   </p>
                 </div>
-              </div>
-              <p class="case-note">
-                These branches rehearse the policy in your browser. To inspect a simulator run, open
-                the <a href="#guide">technical guide</a>.
-              </p>
-            </section>
-          )}
+              ) : (
+                <p class="case-note">
+                  The risk-4 request is awaiting a decision. Investigating a service symptom does
+                  not authorize a tool action.
+                </p>
+              )}
+            </div>
+            <p class="case-note">
+              These branches rehearse the policy in your browser. To inspect a simulator run, open
+              the <a href="#guide">technical guide</a>.
+            </p>
+          </section>
           <Pilot />
           <section class="case-block case-sources">
             <h2>What informed this case</h2>
             <p>
               Google’s SRE practitioners describe assigning incident roles and keeping a working
-              record. Those practices motivate asking who owns the restart and what evidence the
-              handoff carries.{" "}
-              <a href="https://sre.google/workbook/incident-response/">Incident Response</a>
+              record. Their monitoring guidance distinguishes user-visible symptoms from causes,
+              informing the comparison of a settled refund with independent service errors.{" "}
+              <a href="https://sre.google/workbook/incident-response/">Incident Response</a> ·{" "}
+              <a href="https://sre.google/sre-book/monitoring-distributed-systems/">
+                Monitoring Distributed Systems
+              </a>
             </p>
             <p>
               The CNCF Platforms White Paper identifies platform leaders and partner application

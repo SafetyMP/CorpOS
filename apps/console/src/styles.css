@@ -652,3 +652,130 @@ ul {
     gap: 1rem;
   }
 }
+.observation-desk {
+  border-top: 1px solid var(--case-line);
+  margin-top: 0.8rem;
+  padding-top: 0.85rem;
+}
+.observation-desk h3,
+.restart-title {
+  margin: 0.2rem 0 0.35rem;
+  font-size: 1.2rem;
+}
+.observation-desk .case-note {
+  margin: 0.35rem 0 0.75rem;
+}
+.record-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.record-select button {
+  font: inherit;
+  font-size: 0.9375rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--case-control);
+  background: var(--case-night);
+  color: var(--case-ink);
+}
+.record-select button[aria-pressed="true"] {
+  border-color: var(--case-signal);
+  color: var(--case-signal);
+  background: #173349;
+}
+.observation-record {
+  background: var(--case-night);
+  border-left: 3px solid var(--case-control);
+  padding: 0.7rem 1rem;
+  margin: 0.65rem 0 1rem;
+}
+.observation-record p,
+.observation-record blockquote {
+  margin: 0.3rem 0;
+}
+.observation-record blockquote {
+  font-size: 1.1rem;
+}
+.record-meta {
+  color: var(--case-muted);
+  font:
+    0.875rem ui-monospace,
+    monospace;
+}
+.ledger-observation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.6rem;
+  margin: 0.55rem 0;
+}
+.ledger-observation dt {
+  color: var(--case-muted);
+  font-size: 0.875rem;
+}
+.ledger-observation dd {
+  margin: 0;
+  font-weight: 600;
+}
+.capture-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.capture-heading label {
+  font-size: 0.875rem;
+}
+.capture-heading select {
+  background: var(--case-panel);
+  color: var(--case-ink);
+  border: 1px solid var(--case-control);
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+}
+.case-page select:focus-visible {
+  outline: 3px solid var(--case-pending);
+  outline-offset: 3px;
+}
+.probe-chart {
+  margin: 0.5rem 0;
+}
+.probe-chart figcaption {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.probe-row {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(3rem, 16rem) 5rem;
+  align-items: center;
+  gap: 0.6rem;
+  font:
+    0.875rem ui-monospace,
+    monospace;
+  margin: 0.25rem 0;
+}
+.probe-track {
+  height: 0.55rem;
+  background: var(--case-panel);
+}
+.probe-track i {
+  display: block;
+  height: 100%;
+  background: var(--case-signal);
+}
+.investigation-receipt {
+  border-left: 3px solid var(--case-signal);
+  padding: 0.2rem 1rem;
+  background: #172e46;
+}
+.investigation-receipt h4,
+.investigation-receipt p {
+  margin: 0.45rem 0;
+}
+.restart-title {
+  border-top: 1px solid var(--case-line);
+  padding-top: 1rem;
+  margin-top: 1.2rem;
+  margin-bottom: 0.7rem;
+}
