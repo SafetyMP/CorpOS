@@ -18,26 +18,16 @@ One scripted company day. Support hands a $49 refund to Finance. Finance settles
 
 ## Demo
 
-**Who signs for the agent?** Open the [delegation desk](http://localhost:3000) as the platform owner reviewing an automation pilot. Inspect six requests on a single billing contract, edit the rules for handoffs, refunds and service restarts, then replay the day. Compare each proposed disposition with the recorded policy before filing a pilot recommendation. The exercise uses a scripted trace and browser-local state.
+**The billing handoff.** At the [billing on-call desk](http://localhost:3000), inspect Ada’s missing-credit report, a settled $49 refund and two service captures. Assign the investigation, then hold, reject or vote on the queued billing restart. As platform engineering lead, compare manual handoffs, a ticket checklist and a 30-day shadow pilot using the editable capacity worksheet.
 
-The [technical reference](http://localhost:3000/#guide) links the company-day script, policy gateway, counterfactual evaluator and audit verifier. Developers running the local API can separately open the [operator console](http://localhost:3000/#ops) or [Governor](http://localhost:3000/#governor).
-
--------------------------: | :-------------------------------------: | :-----------------------------------: |
-| ![Ops](docs/assets/ops.png) | ![Company day](docs/assets/ops-day.png) | ![Governor](docs/assets/governor.png) |
-
-- **Local demo:** `npm install && npm run build && npm run dev` → [http://localhost:3000](http://localhost:3000)
-- **Regenerate GIF/PNGs:** start the console, then `npm run screenshots` — see [`docs/assets/README.md`](docs/assets/README.md)
-
-In the **ops console**, click **Run company day** to watch the activity timeline: support → finance → ops. The refund stays in place. The service restart stays queued until Approve, Reject, or Kill.
-
----
+[Trace the billing restart](http://localhost:3000/#guide) carries the selected evidence, owner and decision into a six-call actor trace. Inspect the ledger step and shared-service request, then compare a repeated voter, distinct voters and a gateway stop. The trace link can be bookmarked and reopened with the same inputs.
 
 ## Quick start
 
 ```bash
 npm install
 npm run build
-npm run dev        # billing case and ops console on $PORT or 3000
+npm run dev        # billing case on $PORT or 3000
 ```
 
 Contributors and CI should use `npm ci --include=dev` (see [CONTRIBUTING.md](CONTRIBUTING.md)).

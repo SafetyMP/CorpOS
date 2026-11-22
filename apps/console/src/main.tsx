@@ -1,5 +1,6 @@
 import { render } from "preact";
 import { useEffect, useState } from "preact/hooks";
+import { parseSelection, workspaceLink, type Selection } from "./case-selection";
 import { TechnicalGuide } from "./TechnicalGuide";
 import { BillingCase } from "./BillingCase";
 import "./styles.css";
@@ -80,7 +81,7 @@ async function post<T>(path: string, body: object): Promise<T> {
   });
   if (response.status === 401)
     throw new Error(
-      "Dashboard credentials are required for this action. You can explore the delegation desk without signing in.",
+      "Dashboard credentials are required for this action. You can explore the billing case without signing in.",
     );
   if (!response.ok)
     throw new Error(
@@ -216,7 +217,7 @@ function OpsConsole({ tab }: { tab: "ops" | "governor" }) {
       <header>
         <div>
           <p class="eyebrow">
-            CorpOS · <a href="#case">Delegation desk</a> · <a href="#guide">Technical reference</a>
+            CorpOS · <a href="#case">Billing case</a> · <a href="#guide">Technical reference</a>
           </p>
           <h1>Autonomous company ops</h1>
           <p class="lede">
@@ -407,23 +408,29 @@ function OpsConsole({ tab }: { tab: "ops" | "governor" }) {
 }
 
 function App() {
-  const [route, setRoute] = useState(window.location.hash);
+  const [hash, setHash] = useState(window.location.hash);
+  const route = hash.split("?")[0];
+  const selection = parseSelection(hash);
+  const change = (patch: Partial<Selection>) => {
+    const next = workspaceLink(route === "#guide" ? "guide" : "case", { ...selection, ...patch });
+    window.history.replaceState(window.history.state, "", next);
+    setHash(next);
+  };
   useEffect(() => {
-    const onHashChange = () => {
-      const next = window.location.hash;
-      setRoute(next);
-      if (["#ops", "#governor", "#guide", "#case"].includes(next)) window.scrollTo(0, 0);
+    const navigate = () => {
+      setHash(window.location.hash);
+      window.scrollTo(0, 0);
     };
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    window.addEventListener("hashchange", navigate);
+    return () => window.removeEventListener("hashchange", navigate);
   }, []);
   const consoleRoute = route === "#ops" || route === "#governor";
   return (
     <>
       <div hidden={consoleRoute || route === "#guide"}>
-        <BillingCase />
+        <BillingCase selection={selection} change={change} />
       </div>
-      {route === "#guide" && <TechnicalGuide />}
+      {route === "#guide" && <TechnicalGuide selection={selection} change={change} />}
       {consoleRoute && <OpsConsole tab={route === "#ops" ? "ops" : "governor"} />}
     </>
   );

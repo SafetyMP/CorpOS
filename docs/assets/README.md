@@ -1,13 +1,13 @@
 # Repository assets
 
-Visual assets for README and GitHub presentation. Synthetic demo data only.
+These historical operator captures use synthetic data. Start the current public [billing case](../../README.md#demo) to investigate the incident and inspect the selected technical trace.
 
 | File | Purpose |
 |------|---------|
-| [`demo.gif`](demo.gif) | README hero — ops idle, staged company-day agent activity (handoffs → settle → exception → trust → SLA), day complete, Governor. Regenerate with `npm run screenshots`. |
-| [`ops.png`](ops.png) | Ops console — capital, trust, exception queue (idle) |
-| [`ops-day.png`](ops-day.png) | Ops after company day timeline completes |
-| [`governor.png`](governor.png) | Governor — audit head and kill switch |
+| `demo.gif` | Historical operator UI recording — ops idle, staged company-day agent activity (handoffs → settle → exception → trust → SLA), day complete, Governor. Regenerate with `npm run screenshots`. |
+| `ops.png` | Ops console — capital, trust, exception queue (idle) |
+| `ops-day.png` | Ops after company day timeline completes |
+| `governor.png` | Governor — audit head and kill switch |
 
 Regenerate when the ops console layout or company-day timeline changes materially:
 

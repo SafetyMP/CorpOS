@@ -15,12 +15,9 @@ Interop protocols (MCP, optional A2A later) are **transport**. They do not encod
 
 Humans govern **by exception** in the ops console (Approve / Reject / Kill). Autonomy is **earned** from evidence (trust ledger), not granted in prompts. `POST /api/company-day` ignores `autoApproveException`. Tests pass that flag only to `runCompanyDay`.
 
-## 20-minute path
+## Explore one company day
 
-1. `npm install && npm run build && npm run dev`
-2. Open the ops console; click **Run company day** (mutates the same firm Capital/Trust/Contracts show)
-3. Watch the activity timeline; use Exception queue Approve/Reject; toggle Kill if needed
-4. Open Governor for ASI/NIST/AIBOM; run `npm run audit:verify`
+Start the service with `npm install && npm run build && npm run dev`. Open the [billing case](http://localhost:3000), inspect the settled credit and service samples, and decide who should own the next action. Open **Trace this case** to see the six-call timeline and compare the restart under three quorum and gateway trials. Returning restores your investigation and sponsor worksheet.
 
 ## Providers
 
