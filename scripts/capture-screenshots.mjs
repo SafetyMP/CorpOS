@@ -90,7 +90,7 @@ async function captureLive() {
   });
   const page = await context.newPage();
 
-  await page.goto(baseUrl, { waitUntil: "networkidle" });
+  await page.goto(new URL("#ops", baseUrl).href, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Autonomous company ops" }).waitFor({
     state: "visible",
     timeout: 30_000,
