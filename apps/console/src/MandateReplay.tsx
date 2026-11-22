@@ -10,8 +10,9 @@ export function MandateReplay({ selection, change }: CaseProps) {
       <p class="case-kicker">Platform lead · Delegation policy</p>
       <h2 id="mandate-title">Which requests deserve a signature?</h2>
       <p>
-        Ada’s case took six requests. Both team transfers went through automatically. Finance staged
-        the credit and Ops needed approval to restart. Try a different rule for the next case.
+        On Ada’s contract the policy allowed both transfers, staged the credit and sent the restart
+        to review. Change “Cross-team handoffs” to “Human review” to see where staff would wait in
+        the next case.
       </p>
       <div class="mandate-controls">
         {controls.map((control) => (

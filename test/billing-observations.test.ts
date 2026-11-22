@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runCompanyDay } from "../packages/core/src/company-day";
 import { decideException } from "../packages/core/src/company";
-import { exceptions, traces } from "../packages/core/src/schema";
+import { auditChain, exceptions, traces } from "../packages/core/src/schema";
 import {
   requests,
   investigationReceipt,
@@ -58,6 +58,29 @@ describe("the selected billing handoff", () => {
         if (key === "repeat") expect(receipt).toMatchObject({ quorumPending: true });
         else expect(receipt).toMatchObject({ resumed: true });
         expect(company.seed.refunds.filter((entry) => entry.amount === 49)).toHaveLength(1);
+        // These are the receipts the technical guide tells the next shift to look for.
+        const log = await company.db.select().from(auditChain).orderBy(auditChain.seq);
+        const relevant = log.flatMap((entry) => {
+          const payload = JSON.parse(entry.payloadJson);
+          if (payload.tool !== pending.tool && payload.exceptionId !== pending.id) return [];
+          return [{ type: entry.eventType, phase: payload.phase, effect: payload.effect }];
+        });
+        const approval = relevant.findIndex((row) => row.type === "exception.approved");
+        const enforcement = relevant.findIndex(
+          (row) => row.type === "gateway.decision" && row.phase === "enforce",
+        );
+        const execution = relevant.findIndex((row) => row.type === "tool.execute");
+        if (key === "repeat") {
+          expect(relevant.some((row) => row.type === "exception.quorum_vote")).toBe(true);
+          expect([approval, enforcement, execution]).toEqual([-1, -1, -1]);
+        } else {
+          expect(approval).toBeGreaterThanOrEqual(0);
+          expect(enforcement).toBeGreaterThan(approval);
+          if (trial.stop) {
+            expect(relevant[enforcement].effect).toBe("deny");
+            expect(execution).toBe(-1);
+          } else expect(execution).toBeGreaterThan(enforcement);
+        }
         expect((await company.audit.verify()).ok).toBe(true);
       } finally {
         company.close();

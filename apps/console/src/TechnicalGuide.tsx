@@ -89,10 +89,10 @@ export function TechnicalGuide({ selection, change }: CaseProps) {
                   : selection.node === "4"
                     ? "Case ledger · one $49 refund settled. Bank posting remains unknown."
                     : selection.node === "5"
-                      ? `Investigation assigned · ${receipt?.owner ?? "unassigned"}`
+                      ? "Recorded obligation · Finance asked Ops to check service health."
                       : selection.node === "3"
                         ? "Obligation · Finance owns the $49 refund."
-                        : "Case input · Ada reports a missing credit for sub_ada_pro."
+                        : "Contract intake · Ada requests a $49 refund on sub_ada_pro."
               }
               onSelect={(index) => change({ node: String(index + 1) as Selection["node"] })}
             />
@@ -186,6 +186,33 @@ export function TechnicalGuide({ selection, change }: CaseProps) {
                     ? "A second eligible operator completes quorum. The gateway rechecks the controls and runs the simulated restart. Confirming service recovery would still require telemetry."
                     : "Two distinct operators complete quorum. The gateway sees the stop switch at execution and denies the restart. The refund stays posted."}
               </p>
+              <details class="trial-audit">
+                <summary>What could the next shift verify?</summary>
+                <p>
+                  {selection.trial === "repeat" ? (
+                    <>
+                      The exception’s voter record contains one distinct identity. The audit log
+                      records the quorum vote, and there is no execution receipt for the restart.
+                    </>
+                  ) : trial.executed ? (
+                    <>
+                      The audit log records <code>exception.approved</code>, the gateway’s execution
+                      check and a <code>tool.execute</code> entry for the restart. The adapter ran.
+                      The next shift still needs service samples to verify recovery.
+                    </>
+                  ) : (
+                    <>
+                      The audit log records <code>exception.approved</code>, followed by a{" "}
+                      <code>gateway.decision</code> denying execution. The next shift can explain
+                      why an approved restart never ran.
+                    </>
+                  )}
+                </p>
+                <p>
+                  The <a href={source + "packages/core/src/audit.ts"}>audit verifier</a> recomputes
+                  the hash chain to check the sequence of recorded events.
+                </p>
+              </details>
               <p class="desk-hint">
                 Your case has {votes} of 2 votes. Changing this trial compares a separate run. Each
                 run retains one $49 refund.
@@ -204,10 +231,10 @@ export function TechnicalGuide({ selection, change }: CaseProps) {
             </p>
             <p>
               The customer report, service samples and pilot economics are authored examples. The
-              trial table contains normalized fixture outcomes from fresh simulator runs. The{" "}
+              browser displays saved example outcomes. The{" "}
               <a href={source + "test/billing-observations.test.ts"}>reproduction test</a> reruns
-              each trial, verifies votes and adapter execution, and checks the retained ledger
-              entry. These results model tool behavior rather than observed service availability.
+              each trial and checks the votes, restart receipts and retained ledger entry against a
+              fresh simulator run.
             </p>
             <code>npx vitest run test/billing-observations.test.ts</code>
           </details>

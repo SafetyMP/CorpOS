@@ -27,10 +27,17 @@ try {
       0,
     );
     assert.equal(await page.locator(".observation-desk, .mandate-replay, #pilot").count(), 0);
+    assert.equal(await page.locator(".framework-map li").count(), 3);
     await page.getByRole("button", { name: "Open Ada’s case file" }).press("Enter");
     assert.equal(await page.getByRole("radio", { name: "Cast an approval vote" }).count(), 0);
     await page.getByRole("button", { name: "Refund ledger" }).click();
     assert.match(await page.locator(".ledger-observation").innerText(), /Settled/);
+    await page.getByRole("link", { name: "Trace the refund on the work contract" }).click();
+    assert.match(await page.locator(".trace-inspector").innerText(), /billing.issue_refund/);
+    await page
+      .getByRole("link", { name: /Return to your billing case/ })
+      .first()
+      .click();
     await page.getByRole("radio", { name: "Trace Ada’s credit" }).check();
     await page.getByRole("radio", { name: "Reject the request" }).check();
     await page.getByRole("button", { name: "Service samples" }).click();
@@ -73,6 +80,11 @@ try {
     assert.match(await page.locator(".trial-result").innerText(), /runs the simulated restart/);
     await page.getByRole("button", { name: "Stop before vote two", exact: true }).click();
     assert.match(await page.locator(".trial-result").innerText(), /denies the restart/);
+    await page.locator(".trial-audit summary").click();
+    assert.match(
+      await page.locator(".trial-audit").innerText(),
+      /exception.approved.*gateway.decision/s,
+    );
     const link = await page
       .getByRole("link", { name: "Bookmark this comparison" })
       .getAttribute("href");

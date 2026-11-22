@@ -1,4 +1,4 @@
-import type { CaseProps } from "./case-selection";
+import { workspaceLink, type CaseProps } from "./case-selection";
 import { investigationReceipt, serviceCaptures, type Capture } from "./billing-observations";
 
 const records = { ticket: "Customer report", ledger: "Refund ledger", probe: "Service samples" };
@@ -65,6 +65,14 @@ export function BillingObservations({ selection, change }: CaseProps) {
                 <dd>Unknown</dd>
               </div>
             </dl>
+            <p>
+              Finance’s receipt gives Support a place to check whether the company already issued
+              this credit. Payments can use the processor reference to trace whether the credit
+              reached Ada’s account.
+            </p>
+            <a href={workspaceLink("guide", { ...selection, panel: "contract", node: "4" })}>
+              Trace the refund on the work contract
+            </a>
           </>
         )}
         {record === "probe" && (

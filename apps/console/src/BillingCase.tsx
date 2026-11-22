@@ -95,9 +95,10 @@ function Pilot({ selection, change }: CaseProps) {
       <p class="case-kicker">Platform engineering lead</p>
       <h2 id="pilot-title">Would the handoff pay for a pilot?</h2>
       <p>
-        As the platform engineering lead, partner with billing developers and their on-call team.
-        Compare today’s manual handoffs and a checklist in the existing ticket queue with a 30-day
-        shadow pilot that drafts handoffs while staff retain control.
+        Can the team spend less time finding the next owner while keeping shared-service changes
+        accountable? Compare a checklist in today’s queue with a 30-day shadow pilot. In the pilot,
+        CorpOS would draft the handoff and show which requests need review. Staff would still make
+        the changes. The estimates below value any time recovered.
       </p>
       <div class="case-calculator">
         <div>
@@ -302,11 +303,36 @@ export function BillingCase({ selection, change }: CaseProps) {
               signature for every routine transfer also takes time away from the people who handle
               exceptions.
             </p>
-            <p>
-              CorpOS links the teams’ tasks and owners to one work contract. A delegation policy
-              says which actions may proceed, which need review and who can stop them. Follow Ada’s
-              case to see where those boundaries help.
-            </p>
+            <figure class="framework-map" aria-labelledby="framework-title">
+              <figcaption id="framework-title">How CorpOS governs work across teams</figcaption>
+              <ol>
+                <li>
+                  <b>Work contract</b>
+                  <strong>Who owes the next step?</strong>
+                  <p>
+                    Each handoff names the sender, the receiving team and the work it owes. The next
+                    team can pick up Ada’s case without reconstructing the request from tickets.
+                  </p>
+                </li>
+                <li>
+                  <b>Delegation policy</b>
+                  <strong>Who has authority to act?</strong>
+                  <p>
+                    CorpOS checks each proposed tool call against the agent’s authority. Routine
+                    work can proceed within its limits. Requests that need judgment go to an
+                    eligible reviewer.
+                  </p>
+                </li>
+                <li>
+                  <b>Execution and receipts</b>
+                  <strong>What actually happened?</strong>
+                  <p>
+                    Before an approved change runs, the gateway rechecks the current rules. Its
+                    records let the next shift see whether an action waited, was blocked or ran.
+                  </p>
+                </li>
+              </ol>
+            </figure>
             <button type="button" class="case-vote case-open" onClick={openFile}>
               {opened ? "Return to Ada’s file" : "Open Ada’s case file"}
             </button>
@@ -327,8 +353,10 @@ export function BillingCase({ selection, change }: CaseProps) {
                   <>
                     <h3 class="restart-title">Ops has requested a restart. Do you authorize it?</h3>
                     <p>
-                      Ops was asked to check service health. Changing the shared billing service
-                      requires a separate decision.
+                      Finance handed Ops an obligation to check service health. That handoff gives
+                      Ops ownership of the check. When Ops proposes changing the shared service,
+                      CorpOS evaluates that new request under the restart policy. You’re reviewing
+                      that exception.
                     </p>
                     <div class="case-actions-layout">
                       <div>
