@@ -7,7 +7,7 @@
 - [README](README.md): quick start and architecture
 - [DESIGN-PIVOT](docs/DESIGN-PIVOT.md): September 2026 positioning — simulation, not an orchestration framework
 - [AGENTS](AGENTS.md): contributor and coding-agent conventions
-- [Future of the firm](docs/future-of-the-firm.md): thesis and 20-minute demo
+- [Future of the firm](docs/future-of-the-firm.md): company-day thesis, billing case and selected technical trace
 - [Governance crosswalk](docs/governance-crosswalk.md): NIST / OWASP ASI (pedagogical)
 - [Security](SECURITY.md): reference-architecture posture
 - [Contributing](CONTRIBUTING.md): setup and PR expectations
