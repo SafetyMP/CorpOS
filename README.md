@@ -20,6 +20,12 @@ Ada calls Support because she can’t find a $49 credit. Finance can trace the m
 
 [Open the technical guide](https://safetymp.github.io/CorpOS/#guide) to trace the selected case through the tool gateway, approval rules and execution check. The public demo runs in your browser with simulated records. To run the API and operator console locally, follow the quick start below.
 
+### Trace Ada’s handoff through the simulator
+
+- **Who owes the next step?** The company-day script opens a work contract and passes tasks between Support, Finance and Operations. The case pairs those handoffs with the customer’s report, a ledger entry and service samples. A ledger entry alone cannot establish when the credit appears on Ada’s statement. [Company-day script](packages/core/src/company-day.ts) · [Case observations](apps/console/src/billing-observations.ts)
+- **Who can authorize the restart?** The exception handler counts distinct eligible votes. Once enough people approve, the tool gateway checks current policy before allowing the adapter to run. An on-call engineer can follow those decisions separately from the refund. [Exception handler](packages/core/src/company.ts) · [Tool gateway](packages/core/src/gateway.ts)
+- **What can the next shift verify?** The browser shows saved trials. After installing dependencies, run `npx vitest run test/billing-observations.test.ts` to reproduce them in fresh in-memory companies and check votes, execution events and the refund record. The audit verifier checks the sequence of recorded events. Operators still need fresh service observations to establish recovery. [Reproduction test](test/billing-observations.test.ts) · [Audit verifier](packages/core/src/audit.ts)
+
 ## Quick start
 
 ```bash
