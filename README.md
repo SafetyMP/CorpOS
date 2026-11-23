@@ -1,8 +1,8 @@
 # CorpOS: Company-Day Simulation with Agent Governance
 
-A reference company-day simulation for agent handoffs, policy decision points (PDP), policy enforcement points (PEP) and human approval. Inspect a scripted support, finance and operations workflow; live language-model calls are optional and disabled by default.
+Ada’s statement still shows a $49 charge she expected her subscription provider to credit. Support needs an answer, Finance can see the refund ledger, and Operations runs one billing service for every customer. As platform lead, would you send the case for a payment trace or ask Operations to investigate the shared service? A duplicate refund costs money. A poorly justified restart can interrupt other accounts.
 
-Ada calls Support because she can’t find a $49 credit. Finance can trace the money, while Operations can see whether the shared billing service is healthy. As the on-call lead, whose evidence would you ask for before doing anything that could affect other customers? [Open Ada’s case](https://safetymp.github.io/CorpOS/).
+CorpOS models the teams’ handoffs as work contracts. Each names who owes the next step. Tool requests carry that authority into a gateway, which routes exceptions to human reviewers and records what ran. The next shift can see which action is still open before asking a customer or another team to repeat work. [Open Ada’s case file](https://safetymp.github.io/CorpOS/) · [Trace the handoff into the gateway](https://safetymp.github.io/CorpOS/#guide)
 
 [![CI](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml)
@@ -16,9 +16,9 @@ Ada calls Support because she can’t find a $49 credit. Finance can trace the m
 
 ## Demo
 
-[Open the CorpOS billing case](https://safetymp.github.io/CorpOS/). A customer calls about a missing credit. Follow the records across Support, Finance and Operations, decide who should act and see what happens to the refund and the shared billing service.
+Inspect Ada’s report, the ledger and the service observations. Choose a handoff, then follow a proposed restart through the vote and the execution check. The browser uses saved simulation records. The local API and operator console run the scripted company day. Live language-model calls are optional and disabled by default. [Try the case](https://safetymp.github.io/CorpOS/) · [Open the technical guide](https://safetymp.github.io/CorpOS/#guide) · [Run the simulator](#quick-start)
 
-[Open the technical guide](https://safetymp.github.io/CorpOS/#guide) to trace the selected case through the tool gateway, approval rules and execution check. The public demo runs in your browser with simulated records. To run the API and operator console locally, follow the quick start below.
+**Would the handoff pay for a pilot?** The platform engineering lead can compare the ticket queue, a payment-and-health checklist and a 30-day shadow pilot. Time comparable cases and have the receiving shift identify the owner and disposition of each proposed restart. Keep execution with the existing team during the pilot. [Pilot worksheet](apps/console/src/BillingCase.tsx)
 
 ### Trace Ada’s handoff through the simulator
 
