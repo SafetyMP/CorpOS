@@ -1,4 +1,10 @@
 const values = {
+  opened: ["no", "yes"],
+  handoff: ["allow", "approve", "deny"],
+  refund: ["draft", "approve", "deny"],
+  restart: ["approve", "deny"],
+  compared: ["no", "yes"],
+  panel: ["contract", "policy", "gateway"],
   stage: ["ops", "support", "finance"],
   record: ["ticket", "ledger", "probe"],
   capture: ["A", "B"],
@@ -18,6 +24,12 @@ export type Selection = { [K in keyof typeof values]: (typeof values)[K][number]
   cost: string;
 };
 export const initial: Selection = {
+  opened: "no",
+  handoff: "allow",
+  refund: "draft",
+  restart: "approve",
+  compared: "no",
+  panel: "contract",
   stage: "ops",
   record: "ticket",
   capture: "A",
@@ -48,6 +60,7 @@ export function parseSelection(hash: string): Selection {
     if (value !== null && value.length <= 24 && (value === "" || Number.isFinite(Number(value))))
       result[key] = value;
   }
+  if (result.stage === "finance" && !query.has("record")) result.record = "ledger";
   if (result.record === "probe") result.observed = "yes";
   if (result.decision !== "approve") result.votes = "one";
   return result;

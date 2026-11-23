@@ -16,7 +16,7 @@ export function ActorTrace({
     <section class="trace-panel" aria-labelledby="trace-heading">
       <div class="trace-heading">
         <div>
-          <p class="desk-label">Contract / billing-01</p>
+          <p class="desk-label">Ada’s billing contract</p>
           <h2 id="trace-heading">Request trace</h2>
         </div>
         <span>6 calls · $49 refund</span>
@@ -24,7 +24,8 @@ export function ActorTrace({
       <div class="trace-console">
         <div class="trace-board">
           <p class="desk-hint">
-            Follow the call sequence across teams. Select a node for its request details.
+            Support opens one contract for Ada’s $49 refund with a four-hour deadline. Select a call
+            to see which team took responsibility and what it requested.
           </p>
           <div class="trace-scale" aria-hidden="true">
             <span>Actor</span>

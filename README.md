@@ -2,9 +2,7 @@
 
 A reference company-day simulation for agent handoffs, policy decision points (PDP), policy enforcement points (PEP) and human approval. Inspect a scripted support, finance and operations workflow; live language-model calls are optional and disabled by default.
 
-One scripted company day. Support hands a $49 refund to Finance. Finance settles `billing.issue_refund` through the tool gateway and hands the work to Ops. Ops queues `ops.restart_service` for billing-api. The refund stays on the ledger. The restart stays queued until Approve, Reject, or Kill.
-
-`POST /api/company-day` runs that day. It does not settle the restart, and it does not honor `autoApproveException` from the JSON body. An unauthenticated caller cannot auto-approve.
+Ada calls Support because she can’t find a $49 credit. Finance can trace the money, while Operations can see whether the shared billing service is healthy. As the on-call lead, whose evidence would you ask for before doing anything that could affect other customers? [Open Ada’s case](https://safetymp.github.io/CorpOS/).
 
 [![CI](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/SafetyMP/CorpOS/actions/workflows/codeql.yml)
@@ -18,9 +16,15 @@ One scripted company day. Support hands a $49 refund to Finance. Finance settles
 
 ## Demo
 
-**The billing handoff.** At the [billing on-call desk](http://localhost:3000), inspect Ada’s missing-credit report, a settled $49 refund and two service captures. Assign the investigation, then hold, reject or vote on the queued billing restart. As platform engineering lead, compare manual handoffs, a ticket checklist and a 30-day shadow pilot using the editable capacity worksheet.
+[Open the CorpOS billing case](https://safetymp.github.io/CorpOS/). A customer calls about a missing credit. Follow the records across Support, Finance and Operations, decide who should act and see what happens to the refund and the shared billing service.
 
-[Trace the billing restart](http://localhost:3000/#guide) carries the selected evidence, owner and decision into a six-call actor trace. Inspect the ledger step and shared-service request, then compare a repeated voter, distinct voters and a gateway stop. The trace link can be bookmarked and reopened with the same inputs.
+[Open the technical guide](https://safetymp.github.io/CorpOS/#guide) to trace the selected case through the tool gateway, approval rules and execution check. The public demo runs in your browser with simulated records. To run the API and operator console locally, follow the quick start below.
+
+### Trace Ada’s handoff through the simulator
+
+- **Who owes the next step?** The company-day script opens a work contract and passes tasks between Support, Finance and Operations. The case pairs those handoffs with the customer’s report, a ledger entry and service samples. A ledger entry alone cannot establish when the credit appears on Ada’s statement. [Company-day script](packages/core/src/company-day.ts) · [Case observations](apps/console/src/billing-observations.ts)
+- **Who can authorize the restart?** The exception handler counts distinct eligible votes. Once enough people approve, the tool gateway checks current policy before allowing the adapter to run. An on-call engineer can follow those decisions separately from the refund. [Exception handler](packages/core/src/company.ts) · [Tool gateway](packages/core/src/gateway.ts)
+- **What can the next shift verify?** The browser shows saved trials. After installing dependencies, run `npx vitest run test/billing-observations.test.ts` to reproduce them in fresh in-memory companies and check votes, execution events and the refund record. The audit verifier checks the sequence of recorded events. Operators still need fresh service observations to establish recovery. [Reproduction test](test/billing-observations.test.ts) · [Audit verifier](packages/core/src/audit.ts)
 
 ## Quick start
 
@@ -50,6 +54,8 @@ docker run --rm -p 3000:3000 corpos
 CI may publish images to `ghcr.io/safetymp/corpos` (tags: branch, sha, semver, `latest`). Optional Fly.io deploy runs from [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) on GitHub release when `FLY_API_TOKEN` is set — see [`fly.toml`](fly.toml).
 
 ## Architecture
+
+`POST /api/company-day` runs the scripted company day. It does not settle the restart, and it does not honor `autoApproveException` from the JSON body. An unauthenticated caller cannot auto-approve.
 
 | Layer                 | Package / app           | Responsibility                                        |
 | --------------------- | ----------------------- | ----------------------------------------------------- |
